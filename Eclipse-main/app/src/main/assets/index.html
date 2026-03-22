@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Eclipse</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body id="mainBody">
+<canvas id="bgCanvas"></canvas>
+<div class="star-layer" id="starLayer"></div>
+
+<div class="app-layout">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand" id="brandLabel">Eclipse</div>
+    <div class="ad-badge" id="adBadge" onclick="openAdPanel()">
+      <div class="ad-dot"></div>
+      <span id="adBadgeText">Shield ON · 0 blocked</span>
+    </div>
+  </div>
+
+  <!-- ══ NORMAL HOME ══════════════════════════════════════════════ -->
+  <div id="homeContent" class="home-scroll">
+
+    <!-- HERO — left aligned, orb on right -->
+    <div class="hero-block fu fu1">
+      <div class="hero-inner">
+        <div class="hero-text">
+          <div class="greeting-sub" id="dateDisplay">Loading...</div>
+          <div class="greeting-main" id="greetingMain">Good <span class="greet-accent">Morning</span>, Explorer</div>
+          <div class="clock-time" id="clockDisplay">--:-- --</div>
+        </div>
+        <div class="eclipse-orb-wrap" id="crescentWrap">
+          <div class="eclipse-orb">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+              <defs>
+                <radialGradient id="ecl-glow" cx="22%" cy="50%" r="60%">
+                  <stop offset="0%" stop-color="#ffe88a" stop-opacity="0.55"/>
+                  <stop offset="45%" stop-color="#ffaa20" stop-opacity="0.18"/>
+                  <stop offset="100%" stop-color="#ff7000" stop-opacity="0"/>
+                </radialGradient>
+                <filter id="ecl-f1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+                <filter id="ecl-f2" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3"/></filter>
+              </defs>
+              <ellipse cx="52" cy="100" rx="54" ry="66" fill="url(#ecl-glow)" filter="url(#ecl-f1)"/>
+              <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(212,168,64,0.6)" stroke-width="8"/>
+              <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(212,168,64,0.85)" stroke-width="1.3"/>
+              <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(255,240,160,0.4)" stroke-width="0.8"/>
+              <circle cx="115" cy="100" r="80" fill="#060609"/>
+              <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(255,230,120,0.18)" stroke-width="4" filter="url(#ecl-f2)"/>
+              <circle cx="26"  cy="58"  r="1.1" fill="white" opacity="0.65"/>
+              <circle cx="170" cy="42"  r="1.3" fill="white" opacity="0.55"/>
+              <circle cx="180" cy="138" r="0.9" fill="white" opacity="0.45"/>
+              <circle cx="28"  cy="155" r="1.2" fill="white" opacity="0.6"/>
+              <circle cx="158" cy="172" r="0.8" fill="white" opacity="0.4"/>
+              <circle cx="40"  cy="112" r="0.7" fill="white" opacity="0.5"/>
+              <circle cx="164" cy="72"  r="1.0" fill="white" opacity="0.55"/>
+              <circle cx="135" cy="28"  r="0.9" fill="white" opacity="0.45"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="search-wrap fu fu2">
+      <div class="search-row">
+        <div class="search-bar" id="searchBar">
+          <div class="search-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
+          <input type="text" class="search-input" id="searchInput" placeholder="Search or enter address..."
+            onfocus="document.getElementById('searchBar').classList.add('focused')"
+            onblur="document.getElementById('searchBar').classList.remove('focused')"
+            onkeyup="if(event.key==='Enter')doSearch()">
+        </div>
+        <button class="search-btn" onclick="doSearch()" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- FILTER TABS -->
+    <div class="filter-tabs fu fu3">
+      <div class="tab-chip active" onclick="setSearchTab(this,'all')">🌐 All</div>
+      <div class="tab-chip" onclick="setSearchTab(this,'news')">📰 News</div>
+      <div class="tab-chip" onclick="setSearchTab(this,'images')">🖼️ Images</div>
+      <div class="tab-chip" onclick="setSearchTab(this,'videos')">▶️ Videos</div>
+      <div class="tab-chip" onclick="setSearchTab(this,'ai')">✦ AI</div>
+    </div>
+
+    <!-- LIVE NEWS -->
+    <div class="news-section fu fu4">
+      <div class="section-head-row">
+        <span class="section-label">Live News</span>
+        <span class="news-refresh-btn" onclick="loadNews(true)">↻ Refresh</span>
+      </div>
+      <div class="news-cards" id="newsCards">
+        <div class="news-loading"><span class="spinner-news">◌</span> Loading...</div>
+      </div>
+    </div>
+
+    <!-- QUICK SITES -->
+    <div class="sites-section fu fu4">
+      <div class="section-head-row">
+        <span class="section-label">Quick Access</span>
+        <span class="section-hint">hold to remove</span>
+      </div>
+      <div class="sites-grid" id="sitesGrid"></div>
+    </div>
+  </div>
+
+  <!-- ══ INCOGNITO HOME (shown only when #incognito hash) ═════════ -->
+  <div id="incognitoContent" class="home-scroll" style="display:none">
+    <div class="incog-hero fu fu1">
+      <div class="incog-icon">
+        <svg viewBox="0 0 200 200" width="110" height="110">
+          <defs>
+            <radialGradient id="bhG" cx="50%" cy="50%">
+              <stop offset="0%" stop-color="#6a00f4" stop-opacity="0.5"/>
+              <stop offset="60%" stop-color="#1a0040" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+            </radialGradient>
+            <filter id="bhBlur"><feGaussianBlur stdDeviation="9"/></filter>
+          </defs>
+          <circle cx="100" cy="100" r="90" fill="url(#bhG)" filter="url(#bhBlur)"/>
+          <circle cx="100" cy="100" r="46" fill="#000"/>
+          <circle cx="100" cy="100" r="46" fill="none" stroke="rgba(128,0,255,0.75)" stroke-width="1.5"/>
+          <circle cx="100" cy="100" r="62" fill="none" stroke="rgba(100,0,200,0.3)" stroke-width="1"/>
+          <circle cx="100" cy="100" r="76" fill="none" stroke="rgba(80,0,160,0.15)" stroke-width="0.8"/>
+          <ellipse cx="100" cy="110" rx="66" ry="11" fill="none" stroke="rgba(160,60,255,0.35)" stroke-width="2" transform="rotate(-15,100,100)"/>
+          <circle cx="28" cy="35" r="1" fill="white" opacity="0.6"/>
+          <circle cx="170" cy="28" r="1.2" fill="white" opacity="0.5"/>
+          <circle cx="182" cy="160" r="0.8" fill="white" opacity="0.4"/>
+          <circle cx="18" cy="155" r="1" fill="white" opacity="0.55"/>
+        </svg>
+      </div>
+      <div class="incog-title">VOID MODE</div>
+      <div class="incog-sub">No history. No traces. You are invisible.</div>
+      <div class="incog-pills">
+        <div class="incog-pill">🔒 No History</div>
+        <div class="incog-pill">👁 No Tracking</div>
+        <div class="incog-pill">🌑 Blackhole Session</div>
+      </div>
+    </div>
+    <!-- Incognito search -->
+    <div class="search-wrap fu fu2">
+      <div class="search-row">
+        <div class="search-bar incog-bar" id="incogSearchBar">
+          <div class="search-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
+          <input type="text" class="search-input" id="incogSearchInput" placeholder="Search in void..."
+            onfocus="document.getElementById('incogSearchBar').classList.add('focused')"
+            onblur="document.getElementById('incogSearchBar').classList.remove('focused')"
+            onkeyup="if(event.key==='Enter')doSearch()">
+        </div>
+        <button class="search-btn incog-btn" onclick="doSearch()" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="filter-tabs fu fu3">
+      <div class="tab-chip incog-chip active" onclick="setSearchTab(this,'all')">🌐 All</div>
+      <div class="tab-chip incog-chip" onclick="setSearchTab(this,'news')">📰 News</div>
+      <div class="tab-chip incog-chip" onclick="setSearchTab(this,'images')">🖼️ Images</div>
+      <div class="tab-chip incog-chip" onclick="setSearchTab(this,'videos')">▶️ Videos</div>
+    </div>
+    <div class="sites-section fu fu4">
+      <div class="section-head-row"><span class="section-label" style="color:rgba(128,0,255,0.7)">Quick Access</span></div>
+      <div class="sites-grid" id="incogSitesGrid"></div>
+    </div>
+    <!-- Exit incognito button -->
+    <div style="text-align:center;padding:16px 20px 24px">
+      <button onclick="exitIncognito()" style="background:rgba(128,0,255,0.12);border:1px solid rgba(128,0,255,0.35);border-radius:14px;padding:12px 28px;color:rgba(200,120,255,0.9);font-size:14px;font-family:'Outfit',sans-serif;cursor:pointer">
+        ✕ Exit Void Mode
+      </button>
+    </div>
+  </div>
+
+</div><!-- end .app-layout -->
+
+<!-- ══ MUSIC BUBBLE ════════════════════════════════════════════════ -->
+<div class="music-bubble" id="musicBubble" onclick="Music.toggle()">
+  <div class="bubble-btn" id="bubbleBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+  </div>
+  <div class="bubble-pulse"></div>
+</div>
+
+<!-- ══ MUSIC PANEL ═════════════════════════════════════════════════ -->
+<div class="music-panel" id="musicPanel">
+  <div class="mp-header"><span class="mp-label">◈ Eclipse Music</span><span class="mp-close" onclick="Music.close()">✕</span></div>
+  <div class="mp-album" id="mpAlbumArt">🎵</div>
+  <div class="mp-info">
+    <div class="mp-track" id="mpTrack">Tap a station to play</div>
+    <div class="mp-artist" id="mpArtist">Eclipse Radio</div>
+  </div>
+  <div class="mp-live-row"><div class="mp-live-dot"></div><span class="mp-live-txt">LIVE</span></div>
+  <div class="mp-progress-wrap">
+    <div class="mp-bar" id="mpBar"><div class="mp-fill" id="mpFill"></div></div>
+    <div class="mp-times"><span id="mpCurTime">-</span><span id="mpTotTime">-</span></div>
+  </div>
+  <div class="mp-controls">
+    <div class="mp-ctrl-btn" onclick="Music.prev()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></div>
+    <div class="mp-play-btn" onclick="Music.togglePlay()"><svg id="mpPlayIcon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+    <div class="mp-ctrl-btn" onclick="Music.next()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></div>
+  </div>
+  <div class="mp-playlist" id="mpPlaylistEl"></div>
+</div>
+
+<!-- ══ TABS OVERLAY ════════════════════════════════════════════════ -->
+<div class="overlay" id="tabsOverlay" onclick="if(event.target===this)closeTabsPanel()">
+  <div class="tabs-panel">
+    <div class="tabs-panel-header">
+      <span class="tabs-panel-title">Tabs</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tabs-incog-btn" onclick="newIncognitoTab()">⊕ Void</span>
+        <span class="tabs-new-btn" onclick="newTab()">＋ New</span>
+      </div>
+    </div>
+    <div class="tabs-grid" id="tabsGrid"></div>
+    <div class="tabs-panel-footer"><button class="tabs-close-all-btn" onclick="closeTabsPanel()">Done</button></div>
+  </div>
+</div>
+
+<!-- ══ MENU OVERLAY ════════════════════════════════════════════════ -->
+<div class="overlay" id="menuOverlay" onclick="if(event.target===this)closeMenu()">
+  <div class="menu-sheet">
+    <div class="menu-handle"></div>
+    <div class="menu-item" onclick="newTab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg>New Tab</div>
+    <div class="menu-item" onclick="closeMenu();newIncognitoTab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Void Mode</div>
+    <div class="menu-separator"></div>
+    <div class="menu-item" onclick="openAdPanel()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Eclipse Shield</div>
+    <div class="menu-item" onclick="closeMenu();Music.open()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Music Player</div>
+    <div class="menu-item" onclick="openHistory()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History</div>
+    <div class="menu-item" onclick="openBookmarks()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Bookmarks</div>
+    <div class="menu-item" onclick="closeMenu();addBookmarkCurrent()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M12 8v8M8 12h8" stroke="currentColor"/></svg>Add Bookmark</div>
+    <div class="menu-separator"></div>
+    <div class="menu-item" onclick="closeMenu();openCustomize()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 1 4.93 19.07"/></svg>Customize</div>
+    <div class="menu-item menu-item-sm" onclick="closeMenu();Store.clearHistory();showToast('History cleared')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Clear History</div>
+    <button class="menu-done-btn" onclick="closeMenu()">Done</button>
+  </div>
+</div>
+
+<!-- ══ CUSTOMIZE ══════════════════════════════════════════════════ -->
+<div class="overlay" id="cpOverlay" onclick="if(event.target===this)closeCustomize()">
+  <div class="cp-panel">
+    <div class="cp-header">◈ Customize <span class="cp-close" onclick="closeCustomize()">✕</span></div>
+    <div class="cp-section">
+      <div class="cp-label">Accent Color</div>
+      <div class="color-row">
+        <div class="color-swatch active" style="background:linear-gradient(135deg,#ff6b1a,#c23d00)" onclick="setAccent('#ff6b1a','#ffb347',this)"></div>
+        <div class="color-swatch" style="background:linear-gradient(135deg,#6c63ff,#3730d9)" onclick="setAccent('#6c63ff','#9d99ff',this)"></div>
+        <div class="color-swatch" style="background:linear-gradient(135deg,#00d4aa,#007a5e)" onclick="setAccent('#00d4aa','#5fffd9',this)"></div>
+        <div class="color-swatch" style="background:linear-gradient(135deg,#ff3d9a,#c0006e)" onclick="setAccent('#ff3d9a','#ff85c2',this)"></div>
+        <div class="color-swatch" style="background:linear-gradient(135deg,#ffd700,#b8860b)" onclick="setAccent('#ffd700','#ffe966',this)"></div>
+        <div class="color-swatch" style="background:linear-gradient(135deg,#00cfff,#006fa1)" onclick="setAccent('#00cfff','#7fe8ff',this)"></div>
+      </div>
+    </div>
+    <div class="cp-section">
+      <div class="cp-label">Background</div>
+      <div class="theme-opts">
+        <div class="theme-opt active" onclick="setTheme('eclipse',this)"><span>🌑 Eclipse</span><div class="opt-check">✓</div></div>
+        <div class="theme-opt" onclick="setTheme('nebula',this)"><span>🌌 Nebula</span><div class="opt-check"></div></div>
+        <div class="theme-opt" onclick="setTheme('aurora',this)"><span>🌿 Aurora</span><div class="opt-check"></div></div>
+        <div class="theme-opt" onclick="setTheme('void',this)"><span>⬛ Pure Void</span><div class="opt-check"></div></div>
+      </div>
+    </div>
+    <div class="cp-section">
+      <div class="cp-label">Visual Effects</div>
+      <div class="toggle-row"><span>Floating Particles</span><div class="tog on" onclick="toggleParticles(this)"></div></div>
+      <div class="toggle-row"><span>Star Field</span><div class="tog on" onclick="toggleStars(this)"></div></div>
+      <div class="toggle-row"><span>Eclipse Orb</span><div class="tog on" id="togOrb" onclick="toggleOrb(this)"></div></div>
+    </div>
+    <div class="cp-section">
+      <div class="cp-label">Search Engine</div>
+      <div class="se-opts">
+        <div class="se-opt active" data-se="duckduckgo" onclick="setSearchEngine('duckduckgo',this)"><span>🦆 DuckDuckGo</span><div class="opt-check">✓</div></div>
+        <div class="se-opt" data-se="google" onclick="setSearchEngine('google',this)"><span>🔍 Google</span><div class="opt-check"></div></div>
+        <div class="se-opt" data-se="bing" onclick="setSearchEngine('bing',this)"><span>🅱️ Bing</span><div class="opt-check"></div></div>
+        <div class="se-opt" data-se="brave" onclick="setSearchEngine('brave',this)"><span>🦁 Brave</span><div class="opt-check"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ AD PANEL ═══════════════════════════════════════════════════ -->
+<div class="overlay" id="adOverlay" onclick="if(event.target===this)closeAdPanel()">
+  <div class="adp-sheet">
+    <div class="adp-handle"></div>
+    <div class="adp-title">🛡️ Eclipse Shield</div>
+    <div class="adp-sub">Ads and trackers blocked at Android level</div>
+    <div class="adp-stats">
+      <div class="adp-stat"><div class="adp-stat-num" id="statAds">0</div><div class="adp-stat-label">Ads</div></div>
+      <div class="adp-stat"><div class="adp-stat-num" id="statTrackers">0</div><div class="adp-stat-label">Trackers</div></div>
+      <div class="adp-stat"><div class="adp-stat-num" id="statSaved">0s</div><div class="adp-stat-label">Saved</div></div>
+    </div>
+    <div class="adp-toggle-row"><div class="adp-toggle-info"><div class="adp-toggle-name">Ad Blocker</div><div class="adp-toggle-desc">Block ads at network level</div></div><div class="tog on" id="togAdBlock" onclick="toggleAdBlock()"></div></div>
+    <div class="adp-toggle-row"><div class="adp-toggle-info"><div class="adp-toggle-name">Tracker Blocker</div><div class="adp-toggle-desc">Stop cross-site tracking</div></div><div class="tog on" onclick="toggleSwitch(this)"></div></div>
+    <div class="adp-toggle-row"><div class="adp-toggle-info"><div class="adp-toggle-name">HTTPS Upgrade</div><div class="adp-toggle-desc">Force secure connections</div></div><div class="tog on" onclick="toggleSwitch(this)"></div></div>
+    <button class="adp-done-btn" onclick="closeAdPanel()">Done</button>
+  </div>
+</div>
+
+<!-- ══ HISTORY ════════════════════════════════════════════════════ -->
+<div class="overlay" id="historyOverlay" onclick="if(event.target===this)closeHistory()">
+  <div class="cp-panel">
+    <div class="cp-header">◈ History
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-size:11px;color:var(--mt);cursor:pointer;font-weight:normal" onclick="Store.clearHistory();renderHistory();showToast('Cleared')">Clear All</span>
+        <span class="cp-close" onclick="closeHistory()">✕</span>
+      </div>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</div>
+
+<!-- ══ BOOKMARKS ══════════════════════════════════════════════════ -->
+<div class="overlay" id="bookmarksOverlay" onclick="if(event.target===this)closeBookmarks()">
+  <div class="cp-panel">
+    <div class="cp-header">◈ Bookmarks <span class="cp-close" onclick="closeBookmarks()">✕</span></div>
+    <div class="history-list" id="bookmarksList"></div>
+  </div>
+</div>
+
+<!-- ══ CUSTOM MODAL ═══════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="Modal.onBackdropTap(event)">
+  <div class="modal-card" id="modalCard" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-inputs" id="modalInputs"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script src="js/storage.js"></script>
+<script src="js/music.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

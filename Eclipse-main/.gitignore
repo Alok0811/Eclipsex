@@ -1,0 +1,24 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/captures
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Signing keys — never commit
+*.keystore
+*.jks
+
+# AI planner cache
+scripts/.plan_cache.json
+
+# Local website copy (use eclipse-website/ for deployment)
+website/

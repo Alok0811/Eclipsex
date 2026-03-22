@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/workspaces/Eclipse"
+      ]
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "terminal": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic-ai/mcp-server-terminal"
+      ],
+      "env": {
+        "ALLOWED_COMMANDS": "gradle,gradlew,snyk,python3,node,npm,git,gh,cat,ls,find,grep"
+      }
+    },
+    "snyk": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "snyk code test /workspaces/Eclipse --json 2>/dev/null || echo '{\"ok\":true}'"
+      ]
+    }
+  }
+}

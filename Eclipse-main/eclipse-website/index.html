@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eclipse Browser — Your World. Not Just a Browser.</title>
+<meta name="description" content="Eclipse is a next-generation Android browser with deep customization, privacy-first design, and a premium space-inspired UI.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & BASE ===== */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#FF6B1A22 transparent}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#FF6B1A44;border-radius:3px}
+body{
+  font-family:'Outfit',sans-serif;
+  background:#000;
+  color:#f0f0f0;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+
+/* ===== CSS VARIABLES ===== */
+:root{
+  --accent:#FF6B1A;
+  --accent-light:#FFB347;
+  --accent-gold:#E8C840;
+  --void-purple:#7C00FF;
+  --void-light:#B366FF;
+  --surface:rgba(255,255,255,0.045);
+  --surface2:rgba(255,255,255,0.07);
+  --border:rgba(255,255,255,0.08);
+  --text-primary:#F0F0F0;
+  --text-muted:rgba(255,255,255,0.55);
+  --text-muted2:rgba(255,255,255,0.3);
+  --mono:'Space Mono',monospace;
+  --sans:'Outfit',sans-serif;
+}
+
+/* ===== STAR FIELD ===== */
+.starfield{
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;
+}
+.star{
+  position:absolute;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,0.9),rgba(255,255,255,0.1));
+  animation:twinkle var(--dur) ease-in-out infinite alternate;
+}
+@keyframes twinkle{
+  0%{opacity:var(--lo);transform:scale(0.8)}
+  100%{opacity:var(--hi);transform:scale(1.2)}
+}
+
+/* ===== FLOATING PARTICLES ===== */
+.particles{
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:hidden;
+}
+.particle{
+  position:absolute;
+  border-radius:50%;
+  background:var(--accent);
+  filter:blur(1px);
+  opacity:0;
+  animation:particleFloat var(--dur) ease-in-out infinite;
+  animation-delay:var(--delay);
+}
+@keyframes particleFloat{
+  0%{opacity:0;transform:translateY(0) translateX(0) scale(0.5)}
+  15%{opacity:0.6}
+  85%{opacity:0.3}
+  100%{opacity:0;transform:translateY(calc(-100vh - 50px)) translateX(var(--drift)) scale(0.2)}
+}
+
+/* ===== NOISE OVERLAY ===== */
+.noise-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;
+  opacity:0.025;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:128px 128px;
+}
+
+/* ===== NEBULA GLOW BG ===== */
+.nebula-bg{
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;
+}
+.nebula-blob{
+  position:absolute;
+  border-radius:50%;
+  filter:blur(120px);
+  opacity:0;
+  animation:nebulaFloat 18s ease-in-out infinite alternate;
+}
+.nebula-blob:nth-child(1){
+  width:600px;height:600px;top:-200px;left:-150px;
+  background:radial-gradient(circle,rgba(255,107,26,0.15),transparent 70%);
+  animation-delay:0s;
+}
+.nebula-blob:nth-child(2){
+  width:500px;height:500px;bottom:-100px;right:-100px;
+  background:radial-gradient(circle,rgba(124,0,255,0.12),transparent 70%);
+  animation-delay:-6s;
+}
+.nebula-blob:nth-child(3){
+  width:400px;height:400px;top:40%;left:50%;transform:translateX(-50%);
+  background:radial-gradient(circle,rgba(232,200,64,0.08),transparent 70%);
+  animation-delay:-12s;
+}
+@keyframes nebulaFloat{
+  0%{opacity:0.5;transform:scale(1) translate(0,0)}
+  33%{opacity:0.8;transform:scale(1.15) translate(30px,-20px)}
+  66%{opacity:0.6;transform:scale(0.95) translate(-20px,30px)}
+  100%{opacity:0.7;transform:scale(1.1) translate(10px,-10px)}
+}
+
+/* ===== CURSOR GLOW ===== */
+.cursor-glow{
+  position:fixed;width:400px;height:400px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,107,26,0.07),transparent 70%);
+  pointer-events:none;z-index:0;
+  transform:translate(-50%,-50%);
+  transition:opacity 0.4s;
+}
+
+/* ===== SCROLL PROGRESS BAR ===== */
+.scroll-progress{
+  position:fixed;top:0;left:0;height:2px;z-index:9999;
+  background:linear-gradient(90deg,var(--accent),var(--accent-gold),var(--void-purple));
+  width:0%;
+  transition:width 0.1s linear;
+}
+
+/* ===== HEADER / NAV ===== */
+.site-nav{
+  position:fixed;top:0;left:0;width:100%;z-index:100;
+  padding:16px 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  background:rgba(0,0,0,0.4);
+  border-bottom:1px solid var(--border);
+  transform:translateY(-100%);
+  animation:navSlide 0.8s 0.3s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+@keyframes navSlide{to{transform:translateY(0)}}
+.nav-brand{
+  font-family:var(--mono);font-weight:700;font-size:14px;
+  letter-spacing:4px;color:var(--text-primary);
+  display:flex;align-items:center;gap:10px;
+}
+.nav-brand img{width:28px;height:28px;border-radius:6px}
+.nav-links{display:flex;gap:28px;align-items:center}
+.nav-links a{
+  font-family:var(--mono);font-size:11px;letter-spacing:1.5px;
+  color:var(--text-muted);
+  transition:color 0.3s,transform 0.3s;
+  text-transform:uppercase;
+}
+.nav-links a:hover{color:var(--accent);transform:translateY(-1px)}
+.nav-cta{
+  font-family:var(--mono);font-size:11px;letter-spacing:1.5px;
+  color:#fff;
+  background:linear-gradient(135deg,var(--accent),#C23D00);
+  padding:8px 20px;border-radius:20px;
+  transition:transform 0.3s,box-shadow 0.3s;
+  text-transform:uppercase;
+  cursor:pointer;border:none;
+}
+.nav-cta:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(255,107,26,0.3)}
+
+/* ===== SECTION UTILITY ===== */
+.section{
+  position:relative;z-index:2;
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:120px 40px 80px;
+}
+.section-inner{max-width:1100px;width:100%;margin:0 auto}
+
+/* ===== REVEAL ANIMATIONS ===== */
+.reveal{
+  opacity:0;
+  transform:translateY(50px);
+  transition:opacity 0.7s cubic-bezier(0.22,1,0.36,1),transform 0.7s cubic-bezier(0.22,1,0.36,1);
+}
+.reveal.visible{
+  opacity:1;transform:translateY(0);
+}
+.reveal-left{
+  opacity:0;transform:translateX(-80px);
+  transition:opacity 0.7s cubic-bezier(0.22,1,0.36,1),transform 0.7s cubic-bezier(0.22,1,0.36,1);
+}
+.reveal-left.visible{opacity:1;transform:translateX(0)}
+.reveal-right{
+  opacity:0;transform:translateX(80px);
+  transition:opacity 0.7s cubic-bezier(0.22,1,0.36,1),transform 0.7s cubic-bezier(0.22,1,0.36,1);
+}
+.reveal-right.visible{opacity:1;transform:translateX(0)}
+.reveal-scale{
+  opacity:0;transform:scale(0.85);
+  transition:opacity 0.7s cubic-bezier(0.22,1,0.36,1),transform 0.7s cubic-bezier(0.22,1,0.36,1);
+}
+.reveal-scale.visible{opacity:1;transform:scale(1)}
+
+/* stagger delays */
+[data-delay="1"]{transition-delay:0.1s}
+[data-delay="2"]{transition-delay:0.2s}
+[data-delay="3"]{transition-delay:0.3s}
+[data-delay="4"]{transition-delay:0.4s}
+[data-delay="5"]{transition-delay:0.5s}
+[data-delay="6"]{transition-delay:0.6s}
+
+/* ===== HERO SECTION ===== */
+.hero{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;padding-top:80px;
+}
+.hero-content{
+  text-align:center;z-index:2;position:relative;
+}
+.hero-label{
+  font-family:var(--mono);font-size:11px;letter-spacing:5px;
+  color:var(--accent);text-transform:uppercase;
+  opacity:0;animation:fadeSlideUp 0.8s 0.5s cubic-bezier(0.22,1,0.36,1) forwards;
+  margin-bottom:20px;
+}
+.hero-title{
+  font-family:var(--sans);font-weight:200;font-size:clamp(42px,7vw,90px);
+  line-height:1.05;letter-spacing:-1px;
+  color:var(--text-primary);
+  opacity:0;animation:fadeSlideUp 1s 0.7s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+.hero-title .accent{
+  background:linear-gradient(135deg,var(--accent),var(--accent-gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  font-weight:500;
+}
+.hero-subtitle{
+  font-family:var(--sans);font-weight:300;font-size:clamp(16px,2vw,22px);
+  color:var(--text-muted);margin-top:24px;line-height:1.6;
+  max-width:600px;margin-left:auto;margin-right:auto;
+  opacity:0;animation:fadeSlideUp 1s 0.9s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+.hero-actions{
+  display:flex;gap:16px;justify-content:center;margin-top:44px;
+  opacity:0;animation:fadeSlideUp 1s 1.1s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+.btn-primary{
+  font-family:var(--mono);font-size:12px;letter-spacing:2px;
+  color:#fff;text-transform:uppercase;
+  background:linear-gradient(135deg,var(--accent),#C23D00);
+  padding:14px 36px;border-radius:50px;border:none;cursor:pointer;
+  position:relative;overflow:hidden;
+  transition:transform 0.3s cubic-bezier(0.22,1,0.36,1),box-shadow 0.3s;
+}
+.btn-primary:hover{
+  transform:scale(1.06);
+  box-shadow:0 0 40px rgba(255,107,26,0.35),0 0 80px rgba(255,107,26,0.15);
+}
+.btn-primary::after{
+  content:'';position:absolute;top:0;left:-100%;width:200%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);
+  transition:left 0.5s;
+}
+.btn-primary:hover::after{left:100%}
+.btn-secondary{
+  font-family:var(--mono);font-size:12px;letter-spacing:2px;
+  color:var(--text-muted);text-transform:uppercase;
+  background:var(--surface);
+  border:1px solid var(--border);
+  padding:14px 36px;border-radius:50px;cursor:pointer;
+  transition:all 0.3s;
+  backdrop-filter:blur(10px);
+}
+.btn-secondary:hover{
+  color:var(--text-primary);border-color:var(--accent);
+  box-shadow:0 0 20px rgba(255,107,26,0.1);
+}
+
+/* Hero orb */
+.hero-orb{
+  position:absolute;
+  width:500px;height:500px;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  z-index:0;pointer-events:none;
+  opacity:0;animation:orbFadeIn 2s 0.3s ease-out forwards;
+}
+.hero-orb-inner{
+  width:100%;height:100%;position:relative;
+  animation:orbFloat 6s ease-in-out infinite alternate;
+}
+.hero-orb-glow{
+  position:absolute;width:100%;height:100%;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,107,26,0.08) 0%,transparent 65%);
+}
+.hero-orb-ring{
+  position:absolute;
+  top:50%;left:50%;width:180px;height:180px;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  border:2px solid rgba(232,200,64,0.3);
+  box-shadow:0 0 30px rgba(232,200,64,0.1),inset 0 0 20px rgba(232,200,64,0.05);
+  animation:ringPulse 4s ease-in-out infinite alternate;
+}
+.hero-orb-disc{
+  position:absolute;
+  top:50%;left:50%;width:140px;height:140px;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#0a0a0a 40%,#000 70%);
+  box-shadow:0 0 60px rgba(0,0,0,0.9);
+}
+@keyframes orbFloat{
+  0%{transform:translateY(0)}
+  100%{transform:translateY(-20px)}
+}
+@keyframes orbFadeIn{to{opacity:1}}
+@keyframes ringPulse{
+  0%{box-shadow:0 0 30px rgba(232,200,64,0.1),inset 0 0 20px rgba(232,200,64,0.05);border-color:rgba(232,200,64,0.3)}
+  100%{box-shadow:0 0 50px rgba(232,200,64,0.2),inset 0 0 30px rgba(232,200,64,0.1);border-color:rgba(232,200,64,0.5)}
+}
+@keyframes fadeSlideUp{
+  from{opacity:0;transform:translateY(30px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* ===== SCROLL BADGE ===== */
+.scroll-badge{
+  position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
+  z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;
+  opacity:0;animation:fadeSlideUp 1s 1.5s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+.scroll-badge span{
+  font-family:var(--mono);font-size:9px;letter-spacing:3px;
+  color:var(--text-muted2);text-transform:uppercase;
+}
+.scroll-arrow{
+  width:20px;height:20px;border-right:1.5px solid var(--text-muted2);border-bottom:1.5px solid var(--text-muted2);
+  transform:rotate(45deg);
+  animation:scrollBounce 2s ease-in-out infinite;
+}
+@keyframes scrollBounce{
+  0%,100%{transform:rotate(45deg) translate(0,0);opacity:0.3}
+  50%{transform:rotate(45deg) translate(5px,5px);opacity:0.8}
+}
+
+/* ===== PHONE MOCKUP ===== */
+.phone-showcase{
+  display:flex;align-items:center;justify-content:center;gap:80px;
+  flex-wrap:wrap;
+}
+.phone-mockup{
+  width:280px;height:560px;
+  border-radius:36px;
+  background:#0a0a0a;
+  border:2px solid rgba(255,255,255,0.1);
+  box-shadow:0 30px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.05) inset;
+  position:relative;overflow:hidden;
+  transition:transform 0.6s cubic-bezier(0.22,1,0.36,1),box-shadow 0.6s;
+}
+.phone-mockup:hover{
+  transform:translateY(-12px) rotateY(2deg);
+  box-shadow:0 40px 100px rgba(255,107,26,0.15),0 0 0 1px rgba(255,107,26,0.1) inset;
+}
+.phone-notch{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:120px;height:24px;
+  background:#0a0a0a;
+  border-radius:0 0 16px 16px;
+  z-index:5;
+}
+.phone-screen{
+  width:100%;height:100%;
+  border-radius:34px;
+  overflow:hidden;
+  background:#030308;
+  position:relative;
+}
+.phone-screenshot{
+  width:100%;height:100%;object-fit:cover;
+  border-radius:34px;
+}
+
+/* Screenshot placeholders (CSS-drawn app UI) */
+.mock-ui{
+  width:100%;height:100%;padding:32px 16px 16px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.mock-statusbar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:0 4px;margin-bottom:4px;
+}
+.mock-statusbar span{font-family:var(--mono);font-size:9px;color:var(--text-muted2)}
+.mock-brand{
+  font-family:var(--mono);font-weight:700;font-size:10px;
+  letter-spacing:3px;color:var(--text-primary);padding:0 4px;
+}
+.mock-date{
+  font-family:var(--mono);font-size:8px;color:var(--text-muted2);
+  letter-spacing:2px;text-transform:uppercase;padding:6px 4px 0;
+}
+.mock-greeting{
+  font-family:var(--sans);font-weight:300;font-size:17px;
+  color:var(--text-primary);padding:2px 4px;
+}
+.mock-greeting .a{color:var(--accent)}
+.mock-clock{
+  font-family:var(--mono);font-size:9px;color:var(--text-muted);
+  letter-spacing:2px;padding:2px 4px;
+}
+.mock-search{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;padding:10px 12px;
+  display:flex;align-items:center;gap:8px;
+  margin-top:6px;
+}
+.mock-search-text{font-family:var(--sans);font-size:11px;color:var(--text-muted2);flex:1}
+.mock-search-btn{
+  width:32px;height:32px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),#C23D00);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:#fff;
+}
+.mock-tabs{
+  display:flex;gap:6px;padding:4px 0;overflow:hidden;
+}
+.mock-tab{
+  font-family:var(--mono);font-size:8px;letter-spacing:1px;
+  padding:5px 10px;border-radius:16px;
+  background:var(--surface);color:var(--text-muted);white-space:nowrap;
+}
+.mock-tab.active{
+  background:var(--accent);color:#000;font-weight:700;
+}
+.mock-sites{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+  padding:8px 0;
+}
+.mock-site{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.mock-site-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;
+}
+.mock-site-label{font-family:var(--sans);font-size:7px;color:var(--text-muted2)}
+.mock-navbar{
+  margin-top:auto;
+  display:flex;justify-content:space-around;
+  padding:8px 0 4px;
+  border-top:1px solid var(--border);
+}
+.mock-nav-icon{
+  font-size:16px;color:var(--text-muted2);
+  transition:color 0.3s;
+}
+.mock-nav-icon.active{color:var(--accent)}
+
+/* Void mode phone */
+.mock-ui.void{background:#000}
+.mock-ui.void .mock-greeting .a{color:var(--void-purple)}
+.mock-ui.void .mock-search{border-color:rgba(124,0,255,0.2)}
+.mock-ui.void .mock-search-btn{background:linear-gradient(135deg,var(--void-purple),#4400AA)}
+.mock-ui.void .mock-tab.active{background:var(--void-purple)}
+
+/* ===== FEATURES GRID ===== */
+.features-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:24px;margin-top:60px;
+}
+.feature-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:32px 28px;
+  backdrop-filter:blur(20px);
+  transition:all 0.4s cubic-bezier(0.22,1,0.36,1);
+  position:relative;overflow:hidden;
+}
+.feature-card::before{
+  content:'';position:absolute;top:0;left:0;width:100%;height:100%;
+  background:linear-gradient(135deg,rgba(255,107,26,0.03),transparent);
+  opacity:0;transition:opacity 0.4s;
+}
+.feature-card:hover{
+  border-color:rgba(255,107,26,0.2);
+  transform:translateY(-6px);
+  box-shadow:0 20px 60px rgba(0,0,0,0.4);
+}
+.feature-card:hover::before{opacity:1}
+.feature-icon{
+  font-size:32px;margin-bottom:16px;
+  display:inline-block;
+  transition:transform 0.4s cubic-bezier(0.22,1,0.36,1);
+}
+.feature-card:hover .feature-icon{transform:scale(1.15) rotate(-5deg)}
+.feature-title{
+  font-family:var(--sans);font-weight:500;font-size:18px;
+  color:var(--text-primary);margin-bottom:8px;
+}
+.feature-desc{
+  font-family:var(--sans);font-weight:300;font-size:14px;
+  color:var(--text-muted);line-height:1.6;
+}
+
+/* ===== SECTION HEADERS ===== */
+.section-label{
+  font-family:var(--mono);font-size:11px;letter-spacing:5px;
+  color:var(--accent);text-transform:uppercase;
+  margin-bottom:16px;
+}
+.section-title{
+  font-family:var(--sans);font-weight:200;font-size:clamp(32px,5vw,56px);
+  color:var(--text-primary);line-height:1.15;letter-spacing:-0.5px;
+  margin-bottom:20px;
+}
+.section-subtitle{
+  font-family:var(--sans);font-weight:300;font-size:clamp(15px,1.8vw,19px);
+  color:var(--text-muted);line-height:1.7;max-width:640px;
+}
+
+/* ===== STATS BAR ===== */
+.stats-bar{
+  display:flex;justify-content:center;gap:48px;flex-wrap:wrap;
+  padding:60px 40px;margin:0;position:relative;z-index:2;
+}
+.stat-item{text-align:center}
+.stat-number{
+  font-family:var(--mono);font-weight:700;font-size:clamp(28px,4vw,48px);
+  background:linear-gradient(135deg,var(--accent),var(--accent-gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.stat-label{
+  font-family:var(--mono);font-size:10px;letter-spacing:2.5px;
+  color:var(--text-muted2);text-transform:uppercase;margin-top:8px;
+}
+
+/* ===== ROADMAP TIMELINE ===== */
+.timeline{
+  position:relative;padding-left:40px;margin-top:60px;
+}
+.timeline::before{
+  content:'';position:absolute;left:15px;top:0;width:2px;height:100%;
+  background:linear-gradient(to bottom,var(--accent),var(--void-purple),transparent);
+}
+.timeline-item{
+  position:relative;margin-bottom:48px;padding-left:32px;
+}
+.timeline-dot{
+  position:absolute;left:-33px;top:6px;
+  width:14px;height:14px;border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 20px rgba(255,107,26,0.4);
+  transition:transform 0.4s cubic-bezier(0.22,1,0.36,1),box-shadow 0.4s;
+}
+.timeline-item:hover .timeline-dot{
+  transform:scale(1.4);
+  box-shadow:0 0 30px rgba(255,107,26,0.6);
+}
+.timeline-item:nth-child(2) .timeline-dot{background:var(--accent-gold);box-shadow:0 0 20px rgba(232,200,64,0.4)}
+.timeline-item:nth-child(3) .timeline-dot{background:#00CC88;box-shadow:0 0 20px rgba(0,204,136,0.4)}
+.timeline-item:nth-child(4) .timeline-dot{background:#3399FF;box-shadow:0 0 20px rgba(51,153,255,0.4)}
+.timeline-item:nth-child(5) .timeline-dot{background:var(--void-purple);box-shadow:0 0 20px rgba(124,0,255,0.4)}
+.timeline-item:nth-child(6) .timeline-dot{background:#FF3366;box-shadow:0 0 20px rgba(255,51,102,0.4)}
+.timeline-version{
+  font-family:var(--mono);font-size:12px;letter-spacing:2px;
+  color:var(--accent);text-transform:uppercase;margin-bottom:6px;
+}
+.timeline-name{
+  font-family:var(--sans);font-weight:500;font-size:22px;
+  color:var(--text-primary);margin-bottom:6px;
+}
+.timeline-desc{
+  font-family:var(--sans);font-weight:300;font-size:14px;
+  color:var(--text-muted);line-height:1.6;
+}
+
+/* ===== DOWNLOAD SECTION ===== */
+.download-section{
+  text-align:center;
+  background:radial-gradient(ellipse at center,rgba(255,107,26,0.06) 0%,transparent 60%);
+}
+.download-card{
+  display:inline-flex;flex-direction:column;align-items:center;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:28px;
+  padding:48px 56px;
+  backdrop-filter:blur(30px);
+  margin-top:48px;
+  transition:all 0.4s cubic-bezier(0.22,1,0.36,1);
+}
+.download-card:hover{
+  border-color:rgba(255,107,26,0.3);
+  box-shadow:0 30px 80px rgba(0,0,0,0.4),0 0 60px rgba(255,107,26,0.08);
+  transform:translateY(-8px);
+}
+.download-icon{font-size:48px;margin-bottom:16px}
+.download-version{
+  font-family:var(--mono);font-size:10px;letter-spacing:2px;
+  color:var(--text-muted2);text-transform:uppercase;margin-bottom:24px;
+}
+.download-btn{
+  font-family:var(--mono);font-size:13px;letter-spacing:2px;
+  color:#fff;text-transform:uppercase;
+  background:linear-gradient(135deg,var(--accent),var(--accent-gold));
+  padding:16px 48px;border-radius:50px;border:none;cursor:pointer;
+  position:relative;overflow:hidden;
+  transition:all 0.3s cubic-bezier(0.22,1,0.36,1);
+  text-decoration:none;display:inline-block;
+}
+.download-btn:hover{
+  transform:scale(1.08);
+  box-shadow:0 0 50px rgba(255,107,26,0.4),0 0 100px rgba(255,107,26,0.15);
+}
+.download-btn::after{
+  content:'';position:absolute;top:0;left:-100%;width:200%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);
+  animation:shimmer 3s infinite;
+}
+@keyframes shimmer{
+  0%{left:-100%}
+  100%{left:100%}
+}
+.download-size{
+  font-family:var(--mono);font-size:10px;
+  color:var(--text-muted2);margin-top:16px;letter-spacing:1px;
+}
+
+/* ===== FOOTER ===== */
+.site-footer{
+  position:relative;z-index:2;
+  border-top:1px solid var(--border);
+  padding:48px 40px 32px;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;
+}
+.footer-brand{
+  font-family:var(--mono);font-weight:700;font-size:12px;
+  letter-spacing:3px;color:var(--text-muted2);
+}
+.footer-links{display:flex;gap:24px}
+.footer-links a{
+  font-family:var(--mono);font-size:10px;letter-spacing:1.5px;
+  color:var(--text-muted2);text-transform:uppercase;
+  transition:color 0.3s;
+}
+.footer-links a:hover{color:var(--accent)}
+.footer-copy{
+  font-family:var(--mono);font-size:9px;color:var(--text-muted2);
+  letter-spacing:1px;
+}
+
+/* ===== MARQUEE TEXT ===== */
+.marquee-wrap{
+  overflow:hidden;position:relative;z-index:2;
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:20px 0;
+}
+.marquee-track{
+  display:flex;gap:60px;
+  animation:marqueeScroll 25s linear infinite;
+  width:max-content;
+}
+.marquee-text{
+  font-family:var(--sans);font-weight:200;font-size:clamp(28px,4vw,52px);
+  color:var(--text-muted2);white-space:nowrap;
+  letter-spacing:-0.5px;
+}
+.marquee-text .dot{color:var(--accent);margin:0 20px}
+@keyframes marqueeScroll{
+  0%{transform:translateX(0)}
+  100%{transform:translateX(-50%)}
+}
+
+/* ===== GLASSMORPHISM CARDS ===== */
+.glass-card{
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:24px;padding:32px;
+  backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
+  transition:all 0.4s cubic-bezier(0.22,1,0.36,1);
+}
+.glass-card:hover{
+  background:rgba(255,255,255,0.05);
+  border-color:rgba(255,255,255,0.1);
+  transform:translateY(-4px);
+}
+
+/* ===== FLOATING BADGE ===== */
+.floating-badge{
+  position:fixed;bottom:24px;right:24px;z-index:90;
+  font-family:var(--mono);font-size:10px;letter-spacing:2px;
+  color:var(--accent);text-transform:uppercase;
+  background:rgba(0,0,0,0.7);
+  border:1px solid rgba(255,107,26,0.2);
+  padding:10px 18px;border-radius:50px;
+  backdrop-filter:blur(20px);
+  opacity:0;transform:translateY(20px);
+  transition:all 0.5s cubic-bezier(0.22,1,0.36,1);
+  cursor:pointer;
+}
+.floating-badge.visible{opacity:1;transform:translateY(0)}
+.floating-badge:hover{
+  background:rgba(255,107,26,0.1);
+  box-shadow:0 0 20px rgba(255,107,26,0.15);
+}
+
+/* ===== HORIZONTAL LINE ===== */
+.divider-glow{
+  width:100%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  opacity:0.3;margin:0;position:relative;z-index:2;
+}
+
+/* ===== RESPONSIVE — TABLET ===== */
+@media(max-width:1024px){
+  .section{padding:100px 28px 60px}
+  .phone-showcase{gap:50px}
+  .philosophy-grid{grid-template-columns:1fr !important;gap:40px !important}
+}
+
+/* ===== RESPONSIVE — MOBILE ===== */
+@media(max-width:768px){
+  /* Sections & Layout */
+  .section{padding:80px 20px 50px}
+  .section-inner{max-width:100%}
+
+  /* Navigation */
+  .site-nav{padding:14px 18px}
+  .nav-links{display:none}
+  .nav-brand{font-size:18px;letter-spacing:3px;gap:10px}
+  .nav-brand img{width:30px;height:30px}
+  .nav-cta{font-size:14px;padding:12px 22px;letter-spacing:1px}
+
+  /* Hero — the most visible section */
+  .hero{min-height:100svh;padding-top:70px}
+  .hero-label{font-size:14px;letter-spacing:4px;margin-bottom:16px}
+  .hero-title{font-size:clamp(40px,12vw,64px) !important;line-height:1.08}
+  .hero-subtitle{font-size:20px;line-height:1.65;margin-top:20px;padding:0 8px}
+  .hero-actions{
+    flex-direction:column;align-items:center;
+    gap:14px;margin-top:36px;
+  }
+  .btn-primary,.btn-secondary{
+    font-size:16px;padding:18px 40px;width:100%;max-width:320px;text-align:center;
+  }
+  .hero-orb{width:300px;height:300px}
+  .hero-orb-ring{width:110px;height:110px}
+  .hero-orb-disc{width:80px;height:80px}
+  .scroll-badge{bottom:28px}
+  .scroll-badge span{font-size:12px;letter-spacing:2px}
+
+  /* Marquee */
+  .marquee-wrap{padding:16px 0}
+  .marquee-text{font-size:32px !important}
+  .marquee-track{gap:30px}
+
+  /* Stats Bar */
+  .stats-bar{
+    display:grid;grid-template-columns:1fr 1fr;
+    gap:28px 20px;padding:48px 28px;
+  }
+  .stat-number{font-size:clamp(36px,10vw,48px) !important}
+  .stat-label{font-size:13px;letter-spacing:1.5px}
+
+  /* Section Headers */
+  .section-label{font-size:14px;letter-spacing:4px;margin-bottom:14px}
+  .section-title{font-size:clamp(32px,9vw,48px) !important;margin-bottom:16px}
+  .section-subtitle{font-size:18px;line-height:1.65;padding:0 4px}
+
+  /* Features Grid */
+  .features-grid{grid-template-columns:1fr;gap:16px;margin-top:36px}
+  .feature-card{padding:28px 24px;border-radius:18px}
+  .feature-icon{font-size:36px;margin-bottom:14px}
+  .feature-title{font-size:22px}
+  .feature-desc{font-size:17px;line-height:1.65}
+
+  /* Phone Mockups */
+  .phone-showcase{
+    flex-direction:column;gap:40px;align-items:center;
+  }
+  .phone-mockup{
+    width:270px;height:540px;border-radius:34px;
+  }
+  .phone-notch{width:100px;height:20px;border-radius:0 0 12px 12px}
+  .phone-screen{border-radius:32px}
+  .mock-ui{padding:28px 14px 14px}
+  .mock-greeting{font-size:16px}
+  .mock-search{padding:10px;border-radius:12px}
+
+  /* Philosophy / Glass Cards */
+  .philosophy-grid{
+    grid-template-columns:1fr !important;gap:32px !important;
+  }
+  .glass-card{padding:28px 24px;border-radius:20px}
+  .card-icon{font-size:32px;margin-bottom:14px}
+  .card-title{font-size:22px;margin-bottom:10px}
+  .card-desc{font-size:18px;line-height:1.6}
+
+  /* Timeline / Roadmap */
+  .timeline{padding-left:32px;margin-top:44px}
+  .timeline-item{padding-left:24px;margin-bottom:40px}
+  .timeline::before{left:12px}
+  .timeline-dot{left:-34px;width:14px;height:14px}
+  .timeline-version{font-size:13px;letter-spacing:1.5px}
+  .timeline-name{font-size:24px}
+  .timeline-desc{font-size:17px;line-height:1.65}
+
+  /* Download Section */
+  .download-card{
+    padding:40px 28px;border-radius:24px;
+    width:100%;max-width:380px;
+  }
+  .download-icon{font-size:48px}
+  .download-name{font-size:26px}
+  .download-btn{font-size:16px;padding:18px 44px;border-radius:50px}
+  .download-version{font-size:13px}
+  .download-size{font-size:13px}
+  .spec-grid{gap:24px;margin-top:40px}
+  .spec-label{font-size:13px}
+  .spec-value{font-size:17px}
+
+  /* Footer */
+  .site-footer{
+    flex-direction:column;text-align:center;
+    padding:36px 20px 28px;gap:18px;
+  }
+  .footer-brand{font-size:14px}
+  .footer-links{gap:18px;flex-wrap:wrap;justify-content:center}
+  .footer-links a{font-size:14px}
+  .footer-copy{font-size:12px}
+
+  /* Floating Badge */
+  .floating-badge{
+    bottom:18px;right:18px;
+    font-size:13px;padding:12px 18px;
+  }
+
+  /* Cursor glow is useless on touch — hide it */
+  .cursor-glow{display:none !important}
+
+  /* Nebula blobs */
+  .nebula-blob:nth-child(1){width:350px;height:350px;top:-120px;left:-100px}
+  .nebula-blob:nth-child(2){width:280px;height:280px}
+  .nebula-blob:nth-child(3){width:220px;height:220px}
+
+  /* Glow line */
+  .glow-line{width:50px;height:2px;margin-bottom:18px}
+
+  /* Dividers */
+  .divider-glow{opacity:0.2}
+
+  /* Void mockup text (inside phone — keep proportional but bump slightly) */
+  .void-title{font-size:16px}
+  .void-desc{font-size:10px}
+  .void-pill{font-size:9px}
+  .void-trace{font-size:10px}
+  .mock-qa-label{font-size:10px}
+}
+
+/* ===== RESPONSIVE — SMALL PHONES ===== */
+@media(max-width:400px){
+  .section{padding:70px 16px 40px}
+  .hero-title{font-size:36px !important}
+  .hero-subtitle{font-size:18px}
+  .hero-label{font-size:13px}
+  .btn-primary,.btn-secondary{font-size:15px;padding:16px 32px}
+  .phone-mockup{width:240px;height:480px}
+  .feature-card{padding:24px 20px}
+  .feature-title{font-size:20px}
+  .feature-desc{font-size:16px}
+  .stats-bar{padding:36px 18px;gap:22px 14px}
+  .stat-number{font-size:34px !important}
+  .stat-label{font-size:12px}
+  .download-card{padding:32px 20px}
+  .download-name{font-size:22px}
+  .section-title{font-size:30px !important}
+  .section-subtitle{font-size:17px}
+  .section-label{font-size:13px}
+  .timeline-name{font-size:22px}
+  .timeline-desc{font-size:16px}
+  .timeline-version{font-size:12px}
+  .nav-brand{font-size:16px}
+  .nav-cta{font-size:13px}
+  .card-title{font-size:20px}
+  .card-desc{font-size:16px}
+  .spec-label{font-size:12px}
+  .spec-value{font-size:16px}
+  .footer-links a{font-size:13px}
+  .footer-copy{font-size:11px}
+  .floating-badge{font-size:12px}
+  .marquee-text{font-size:26px !important}
+  .download-btn{font-size:15px}
+  .download-version{font-size:12px}
+  .download-size{font-size:12px}
+}
+
+/* ===== COUNTER ANIMATION ===== */
+.counter{
+  display:inline-block;
+}
+
+/* ===== TYPING (used for taglines) ===== */
+.typing-cursor::after{
+  content:'|';
+  animation:blink 0.8s step-end infinite;
+  color:var(--accent);margin-left:2px;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ===== GLOW LINE ACCENT ===== */
+.glow-line{
+  width:60px;height:3px;border-radius:2px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-gold));
+  margin-bottom:24px;
+  box-shadow:0 0 12px rgba(255,107,26,0.3);
+}
+
+/* ===== TILT CARD ===== */
+.tilt-card{
+  transition:transform 0.3s cubic-bezier(0.22,1,0.36,1);
+}
+
+/* ===== INLINE-STYLE REPLACEMENTS (for responsive override) ===== */
+.card-icon{font-size:28px;margin-bottom:12px}
+.card-title{font-family:var(--sans);font-weight:500;font-size:18px;color:var(--text-primary);margin-bottom:8px}
+.card-desc{font-family:var(--sans);font-weight:300;font-size:15px;color:var(--text-muted);line-height:1.55}
+.spec-grid{margin-top:48px;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:20px;max-width:600px;margin-left:auto;margin-right:auto}
+.spec-label{font-family:var(--mono);font-size:11px;color:var(--text-muted2);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.spec-value{font-family:var(--mono);font-size:16px;color:var(--text-primary)}
+.spec-value.accent{color:var(--accent)}
+.download-name{font-family:var(--sans);font-weight:500;font-size:24px;color:var(--text-primary);margin-bottom:8px}
+.void-trace{text-align:center;font-family:var(--mono);font-size:9px;color:var(--void-purple);letter-spacing:3px;opacity:0.5;padding:4px 0}
+.void-title{font-family:var(--sans);font-weight:600;font-size:15px;color:var(--void-light);letter-spacing:4px}
+.void-desc{font-family:var(--mono);font-size:9px;color:var(--text-muted);letter-spacing:1px;text-align:center}
+.void-pill{font-family:var(--mono);font-size:8px;color:rgba(124,0,255,0.6);padding:3px 7px;border-radius:8px;background:rgba(124,0,255,0.08)}
+.mock-qa-label{font-family:var(--mono);font-size:9px;color:var(--text-muted2);letter-spacing:2px;padding:6px 0 2px}
+</style>
+</head>
+<body>
+
+<!-- Scroll Progress -->
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<!-- Cursor Glow -->
+<div class="cursor-glow" id="cursorGlow"></div>
+
+<!-- Nebula Background -->
+<div class="nebula-bg">
+  <div class="nebula-blob"></div>
+  <div class="nebula-blob"></div>
+  <div class="nebula-blob"></div>
+</div>
+
+<!-- Star Field -->
+<div class="starfield" id="starfield"></div>
+
+<!-- Floating Particles -->
+<div class="particles" id="particles"></div>
+
+<!-- Noise -->
+<div class="noise-overlay"></div>
+
+<!-- ====== NAVIGATION ====== -->
+<nav class="site-nav">
+  <div class="nav-brand">
+    <img src="assets/logo.png" alt="Eclipse">
+    ECLIPSE
+  </div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#preview">Preview</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="#download">Download</a>
+  </div>
+  <a href="#download" class="nav-cta">Get APK</a>
+</nav>
+
+<!-- ====== HERO ====== -->
+<section class="hero" id="hero">
+  <div class="hero-orb">
+    <div class="hero-orb-inner">
+      <div class="hero-orb-glow"></div>
+      <div class="hero-orb-ring"></div>
+      <div class="hero-orb-disc"></div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-label">UMBRA 1.0 — NOW AVAILABLE</div>
+    <h1 class="hero-title">Not Just a Browser.<br><span class="accent">Your World.</span></h1>
+    <p class="hero-subtitle">A next-generation Android browser with deep customization, privacy-first design, and a premium space-inspired experience. Free forever.</p>
+    <div class="hero-actions">
+      <a href="#download" class="btn-primary">↓ &nbsp; Download APK</a>
+      <a href="#features" class="btn-secondary">Explore Features</a>
+    </div>
+  </div>
+  <div class="scroll-badge">
+    <span>Scroll to explore</span>
+    <div class="scroll-arrow"></div>
+  </div>
+</section>
+
+<!-- ====== MARQUEE ====== -->
+<div class="marquee-wrap">
+  <div class="marquee-track">
+    <span class="marquee-text">Eclipse Browser<span class="dot">·</span>Customizable<span class="dot">·</span>Private<span class="dot">·</span>Aesthetic<span class="dot">·</span>Free Forever<span class="dot">·</span>Space-Inspired<span class="dot">·</span>No Ads<span class="dot">·</span>Umbra 1.0</span>
+    <span class="marquee-text">Eclipse Browser<span class="dot">·</span>Customizable<span class="dot">·</span>Private<span class="dot">·</span>Aesthetic<span class="dot">·</span>Free Forever<span class="dot">·</span>Space-Inspired<span class="dot">·</span>No Ads<span class="dot">·</span>Umbra 1.0</span>
+  </div>
+</div>
+
+<!-- ====== STATS ====== -->
+<div class="stats-bar" id="stats">
+  <div class="stat-item reveal" data-delay="1">
+    <div class="stat-number counter" data-target="6">0</div>
+    <div class="stat-label">Accent Themes</div>
+  </div>
+  <div class="stat-item reveal" data-delay="2">
+    <div class="stat-number counter" data-target="4">0</div>
+    <div class="stat-label">Search Engines</div>
+  </div>
+  <div class="stat-item reveal" data-delay="3">
+    <div class="stat-number counter" data-target="0">0</div>
+    <div class="stat-label">Ads Shown — Ever</div>
+  </div>
+  <div class="stat-item reveal" data-delay="4">
+    <div class="stat-number counter" data-target="100">0</div>
+    <div class="stat-label">% Free · Forever</div>
+  </div>
+</div>
+
+<div class="divider-glow"></div>
+
+<!-- ====== FEATURES ====== -->
+<section class="section" id="features">
+  <div class="section-inner">
+    <div class="section-label reveal">What Makes It Different</div>
+    <h2 class="section-title reveal" data-delay="1">Crafted for<br><span class="accent">Those Who Care</span></h2>
+    <p class="section-subtitle reveal" data-delay="2">Every pixel is intentional. Every animation feels alive. Eclipse is not a Chrome clone — it's a fully customizable digital space you control.</p>
+
+    <div class="features-grid">
+      <div class="feature-card reveal" data-delay="1">
+        <div class="feature-icon">🛡</div>
+        <div class="feature-title">Eclipse Shield</div>
+        <div class="feature-desc">Built-in ad and tracker blocker that works at the network level. No extensions needed. Browse faster, cleaner, safer — instantly.</div>
+      </div>
+      <div class="feature-card reveal" data-delay="2">
+        <div class="feature-icon">🎨</div>
+        <div class="feature-title">Deep Customization</div>
+        <div class="feature-desc">6 accent colors, 4 background themes, particle effects, star fields, and an animated eclipse orb. Make it yours — completely.</div>
+      </div>
+      <div class="feature-card reveal" data-delay="3">
+        <div class="feature-icon">👁</div>
+        <div class="feature-title">Void Mode</div>
+        <div class="feature-desc">Incognito but dramatic. Enter a black-purple universe where nothing is tracked, no history is saved, and you are invisible.</div>
+      </div>
+      <div class="feature-card reveal" data-delay="4">
+        <div class="feature-icon">✨</div>
+        <div class="feature-title">Spring Animations</div>
+        <div class="feature-desc">Every tap, every scroll, every panel uses spring physics. Nothing snaps — everything breathes, bounces, and responds naturally.</div>
+      </div>
+      <div class="feature-card reveal" data-delay="5">
+        <div class="feature-icon">🔍</div>
+        <div class="feature-title">Multi-Engine Search</div>
+        <div class="feature-desc">Switch between DuckDuckGo, Google, Bing, and Brave instantly. Filter by All, Images, Videos, or AI — right from home.</div>
+      </div>
+      <div class="feature-card reveal" data-delay="6">
+        <div class="feature-icon">🌌</div>
+        <div class="feature-title">Space-Inspired UI</div>
+        <div class="feature-desc">Animated star fields, floating nebula particles, a golden eclipse orb, and a night mode that whispers "Find the Unseen."</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider-glow"></div>
+
+<!-- ====== PREVIEW / PHONE MOCKUPS ====== -->
+<section class="section" id="preview">
+  <div class="section-inner" style="text-align:center">
+    <div class="section-label reveal">See It In Action</div>
+    <h2 class="section-title reveal" data-delay="1" style="text-align:center">Feels Like Stepping<br>Into <span class="accent">Space</span></h2>
+    <p class="section-subtitle reveal" data-delay="2" style="margin:0 auto 60px">Two modes. Same premium feel. Every detail handcrafted.</p>
+
+    <div class="phone-showcase">
+      <!-- Normal Mode Phone -->
+      <div class="phone-mockup reveal-left" data-delay="2">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="mock-ui">
+            <div class="mock-statusbar">
+              <span>9:41 AM</span>
+              <span>●●●● WiFi ▪ 98%</span>
+            </div>
+            <div class="mock-brand">ECLIPSE</div>
+            <div class="mock-date">SATURDAY · MAR 8</div>
+            <div class="mock-greeting">Good <span class="a">Morning</span>, Explorer</div>
+            <div class="mock-clock">9:41 AM</div>
+            <div class="mock-search">
+              <span class="mock-search-text">Search the web...</span>
+              <div class="mock-search-btn">→</div>
+            </div>
+            <div class="mock-tabs">
+              <div class="mock-tab active">ALL</div>
+              <div class="mock-tab">NEWS</div>
+              <div class="mock-tab">IMAGES</div>
+              <div class="mock-tab">VIDEOS</div>
+              <div class="mock-tab">AI</div>
+            </div>
+            <div class="mock-qa-label">QUICK ACCESS</div>
+            <div class="mock-sites">
+              <div class="mock-site"><div class="mock-site-icon">G</div><div class="mock-site-label">Google</div></div>
+              <div class="mock-site"><div class="mock-site-icon">Y</div><div class="mock-site-label">YouTube</div></div>
+              <div class="mock-site"><div class="mock-site-icon">R</div><div class="mock-site-label">Reddit</div></div>
+              <div class="mock-site"><div class="mock-site-icon" style="color:var(--accent)">＋</div><div class="mock-site-label">Add</div></div>
+            </div>
+            <div class="mock-navbar">
+              <span class="mock-nav-icon">←</span>
+              <span class="mock-nav-icon">→</span>
+              <span class="mock-nav-icon active">◉</span>
+              <span class="mock-nav-icon">▣</span>
+              <span class="mock-nav-icon">☰</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Void Mode Phone -->
+      <div class="phone-mockup reveal-right" data-delay="3">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="mock-ui void">
+            <div class="mock-statusbar">
+              <span>11:42 PM</span>
+              <span>●●●● WiFi ▪ 72%</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+              <div style="width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,rgba(124,0,255,0.3),transparent);display:flex;align-items:center;justify-content:center">
+                <div style="width:30px;height:30px;border-radius:50%;background:#000;border:2px solid rgba(124,0,255,0.5);box-shadow:0 0 20px rgba(124,0,255,0.3)"></div>
+              </div>
+              <div class="void-title">VOID MODE</div>
+              <div class="void-desc">No history. No traces.<br>You are invisible.</div>
+              <div style="display:flex;gap:6px;margin:4px 0">
+                <span class="void-pill">🔒 No History</span>
+                <span class="void-pill">👁 No Tracking</span>
+              </div>
+              <div class="mock-search" style="width:100%;margin-top:8px">
+                <span class="mock-search-text">Search in the void...</span>
+                <div class="mock-search-btn" style="background:linear-gradient(135deg,var(--void-purple),#4400AA)">→</div>
+              </div>
+            </div>
+            <div class="void-trace">LEAVE NO TRACE</div>
+            <div class="mock-navbar">
+              <span class="mock-nav-icon">←</span>
+              <span class="mock-nav-icon">→</span>
+              <span class="mock-nav-icon" style="color:var(--void-purple)">◉</span>
+              <span class="mock-nav-icon">▣</span>
+              <span class="mock-nav-icon">☰</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider-glow"></div>
+
+<!-- ====== PHILOSOPHY ====== -->
+<section class="section" id="philosophy">
+  <div class="section-inner">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center" class="philosophy-grid">
+      <div>
+        <div class="glow-line reveal"></div>
+        <div class="section-label reveal" data-delay="1">Philosophy</div>
+        <h2 class="section-title reveal" data-delay="2">Slow. Precise.<br><span class="accent">Stable.</span></h2>
+        <p class="section-subtitle reveal" data-delay="3">Eclipse isn't rushing to ship. Every release is a careful, tested, polished step forward. No vibe-coded MVPs. No template UIs. One clean release at a time.</p>
+      </div>
+      <div class="reveal-right" data-delay="3">
+        <div class="glass-card" style="margin-bottom:20px">
+          <div class="card-icon">🔐</div>
+          <div class="card-title">No Data Ever Sold</div>
+          <div class="card-desc">Your browsing data stays on your device. Period. No analytics, no telemetry, no silent uploads.</div>
+        </div>
+        <div class="glass-card" style="margin-bottom:20px">
+          <div class="card-icon">💎</div>
+          <div class="card-title">100% Free — Forever</div>
+          <div class="card-desc">No premium tiers. No locked features. No "upgrade to pro." Everything is available to everyone, always.</div>
+        </div>
+        <div class="glass-card">
+          <div class="card-icon">🎯</div>
+          <div class="card-title">You Own Your Experience</div>
+          <div class="card-desc">Customizable to the pixel. Your theme, your colors, your effects, your layout. Eclipse adapts to you — not the other way around.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider-glow"></div>
+
+<!-- ====== ROADMAP ====== -->
+<section class="section" id="roadmap">
+  <div class="section-inner">
+    <div class="section-label reveal">The Journey</div>
+    <h2 class="section-title reveal" data-delay="1">Roadmap to<br><span class="accent">Totality</span></h2>
+    <p class="section-subtitle reveal" data-delay="2">A 5-year vision. Six release series. Each one a calculated step toward building something that's never existed before.</p>
+
+    <div class="timeline">
+      <div class="timeline-item reveal" data-delay="1">
+        <div class="timeline-dot"></div>
+        <div class="timeline-version">DAWN 0.1 – 0.5 · Completed</div>
+        <div class="timeline-name">Polish & Stabilize</div>
+        <div class="timeline-desc">Fix, refine, and perfect the foundation. Splash screen, greeting system, menu expansion, logo integration, and removal of dead code.</div>
+      </div>
+      <div class="timeline-item reveal" data-delay="2">
+        <div class="timeline-dot"></div>
+        <div class="timeline-version">UMBRA 1.0 – 1.5 · Now</div>
+        <div class="timeline-name">Core Features</div>
+        <div class="timeline-desc">SearXNG search integration, AI Answer Mode via Groq, custom search card UI, and first public launch on the Play Store.</div>
+      </div>
+      <div class="timeline-item reveal" data-delay="3">
+        <div class="timeline-dot"></div>
+        <div class="timeline-version">PENUMBRA 2.0 – 2.4 · 6–12 months</div>
+        <div class="timeline-name">Full Customization</div>
+        <div class="timeline-desc">Drag-and-drop home screen layout, widget system, community themes, glassmorphism mode, and deep personalization engine.</div>
+      </div>
+      <div class="timeline-item reveal" data-delay="4">
+        <div class="timeline-dot"></div>
+        <div class="timeline-version">CORONA 3.0 – 3.4 · 1–1.5 years</div>
+        <div class="timeline-name">Community Layer</div>
+        <div class="timeline-desc">Theme marketplace, shared layouts, user profiles, community-created widgets, and social browsing features.</div>
+      </div>
+      <div class="timeline-item reveal" data-delay="5">
+        <div class="timeline-dot"></div>
+        <div class="timeline-version">TOTALITY 4.0 – 4.3 · 1.5–3 years</div>
+        <div class="timeline-name">Independent Search</div>
+        <div class="timeline-desc">Eclipse's own search engine. Custom crawling, ranking, and result display — not dependent on any third-party engine.</div>
+      </div>
+      <div class="timeline-item reveal" data-delay="6">
+        <div class="timeline-dot"></div>
+        <div class="timeline-version">SIRIUS 5.0 – 5.2 · 3–5 years</div>
+        <div class="timeline-name">Multi-Platform & Beyond</div>
+        <div class="timeline-desc">Desktop, iOS, voice control, launcher mode, and advanced AI integration. The full Eclipse ecosystem.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider-glow"></div>
+
+<!-- ====== DOWNLOAD ====== -->
+<section class="section download-section" id="download">
+  <div class="section-inner" style="text-align:center">
+    <div class="section-label reveal">Get Eclipse</div>
+    <h2 class="section-title reveal" data-delay="1" style="text-align:center">Ready to<br><span class="accent">Enter the Eclipse?</span></h2>
+    <p class="section-subtitle reveal" data-delay="2" style="margin:0 auto">Download the latest Umbra 1.0 APK. Install it. Make it yours.</p>
+
+    <div class="download-card reveal-scale" data-delay="3">
+      <div class="download-icon">◐</div>
+      <div class="download-name">Eclipse Browser</div>
+      <div class="download-version">Umbra 1.0 · Android 7.0+</div>
+      <a href="https://github.com/TN-ARES0818/eclipse-site/releases/download/Umbra/Eclipse.apk" download class="download-btn">↓ &nbsp; Download APK</a>
+      <div class="download-size">APK · Debug Build</div>
+    </div>
+
+    <div class="spec-grid reveal" data-delay="4">
+      <div style="text-align:center">
+        <div class="spec-label">Min SDK</div>
+        <div class="spec-value">Android 7.0</div>
+      </div>
+      <div style="text-align:center">
+        <div class="spec-label">Target SDK</div>
+        <div class="spec-value">Android 14</div>
+      </div>
+      <div style="text-align:center">
+        <div class="spec-label">Framework</div>
+        <div class="spec-value">Jetpack Compose</div>
+      </div>
+      <div style="text-align:center">
+        <div class="spec-label">Price</div>
+        <div class="spec-value accent">Free · Forever</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== FOOTER ====== -->
+<footer class="site-footer">
+  <div class="footer-brand">ECLIPSE</div>
+  <div class="footer-links">
+    <a href="#features">Features</a>
+    <a href="#preview">Preview</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="https://github.com/TN-ARES0818/Eclipse" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+  <div class="footer-copy">© 2026 Eclipse Browser · Umbra 1.0 · Built with obsession</div>
+</footer>
+
+<!-- Floating Download Badge -->
+<div class="floating-badge" id="floatingBadge" onclick="document.getElementById('download').scrollIntoView({behavior:'smooth'})">
+  ↓ Download APK
+</div>
+
+<!-- ====== JAVASCRIPT ====== -->
+<script>
+(function(){
+  'use strict';
+
+  // ===== STAR FIELD =====
+  const starfield = document.getElementById('starfield');
+  const starCount = 180;
+  for(let i = 0; i < starCount; i++){
+    const star = document.createElement('div');
+    star.className = 'star';
+    const size = Math.random() * 2.2 + 0.5;
+    const lo = (Math.random() * 0.3 + 0.1).toFixed(2);
+    const hi = (Math.random() * 0.5 + 0.4).toFixed(2);
+    const dur = (Math.random() * 3 + 2).toFixed(1);
+    Object.assign(star.style, {
+      width: size + 'px', height: size + 'px',
+      left: Math.random() * 100 + '%',
+      top: Math.random() * 100 + '%',
+      '--lo': lo, '--hi': hi, '--dur': dur + 's',
+      animationDelay: (Math.random() * 4).toFixed(1) + 's'
+    });
+    starfield.appendChild(star);
+  }
+
+  // ===== PARTICLES =====
+  const particles = document.getElementById('particles');
+  const particleCount = 15;
+  for(let i = 0; i < particleCount; i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 4 + 2;
+    const dur = (Math.random() * 12 + 10).toFixed(1);
+    const delay = (Math.random() * 15).toFixed(1);
+    const drift = (Math.random() * 200 - 100).toFixed(0);
+    Object.assign(p.style, {
+      width: size + 'px', height: size + 'px',
+      left: Math.random() * 100 + '%',
+      bottom: '-20px',
+      '--dur': dur + 's', '--delay': delay + 's', '--drift': drift + 'px'
+    });
+    particles.appendChild(p);
+  }
+
+  // ===== CURSOR GLOW =====
+  const cursorGlow = document.getElementById('cursorGlow');
+  let mouseX = -500, mouseY = -500;
+  let glowX = -500, glowY = -500;
+  document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+  function animateCursor(){
+    glowX += (mouseX - glowX) * 0.08;
+    glowY += (mouseY - glowY) * 0.08;
+    cursorGlow.style.left = glowX + 'px';
+    cursorGlow.style.top = glowY + 'px';
+    requestAnimationFrame(animateCursor);
+  }
+  animateCursor();
+
+  // ===== SCROLL PROGRESS =====
+  const scrollProgress = document.getElementById('scrollProgress');
+  window.addEventListener('scroll', () => {
+    const h = document.documentElement.scrollHeight - window.innerHeight;
+    const p = (window.scrollY / h) * 100;
+    scrollProgress.style.width = p + '%';
+  }, {passive: true});
+
+  // ===== REVEAL ON SCROLL =====
+  const reveals = document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale');
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(el => revealObserver.observe(el));
+
+  // ===== FLOATING BADGE (show after scrolling past hero) =====
+  const floatingBadge = document.getElementById('floatingBadge');
+  const heroEl = document.getElementById('hero');
+  const badgeObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(!entry.isIntersecting){
+        floatingBadge.classList.add('visible');
+      } else {
+        floatingBadge.classList.remove('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+  badgeObserver.observe(heroEl);
+
+  // ===== COUNTER ANIMATION =====
+  const counters = document.querySelectorAll('.counter');
+  const counterObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        const el = entry.target;
+        const target = parseInt(el.getAttribute('data-target'));
+        const suffix = el.getAttribute('data-target') === '100' ? '%' : '';
+        let current = 0;
+        const duration = 1500;
+        const step = target / (duration / 16);
+        const timer = setInterval(() => {
+          current += step;
+          if(current >= target){ current = target; clearInterval(timer); }
+          el.textContent = Math.floor(current) + suffix;
+        }, 16);
+        counterObserver.unobserve(el);
+      }
+    });
+  }, { threshold: 0.5 });
+  counters.forEach(el => counterObserver.observe(el));
+
+  // ===== NEBULA OPACITY ON SCROLL =====
+  const nebulaBlobs = document.querySelectorAll('.nebula-blob');
+  window.addEventListener('scroll', () => {
+    const scrollY = window.scrollY;
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    const ratio = scrollY / maxScroll;
+    nebulaBlobs.forEach((blob, i) => {
+      const offset = (scrollY * 0.05 * (i + 1));
+      blob.style.transform = `translate(${Math.sin(ratio * Math.PI + i) * 30}px, ${-offset}px)`;
+    });
+  }, {passive: true});
+
+  // ===== NAV BACKGROUND OPACITY ON SCROLL =====
+  const nav = document.querySelector('.site-nav');
+  window.addEventListener('scroll', () => {
+    if(window.scrollY > 100){
+      nav.style.background = 'rgba(0,0,0,0.75)';
+    } else {
+      nav.style.background = 'rgba(0,0,0,0.4)';
+    }
+  }, {passive: true});
+
+  // ===== TILT on phone mockups =====
+  document.querySelectorAll('.phone-mockup').forEach(phone => {
+    phone.addEventListener('mousemove', (e) => {
+      const rect = phone.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      phone.style.transform = `perspective(800px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) translateY(-8px)`;
+    });
+    phone.addEventListener('mouseleave', () => {
+      phone.style.transform = '';
+    });
+  });
+
+  // ===== SMOOTH ANCHOR SCROLL =====
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if(target) target.scrollIntoView({behavior: 'smooth', block: 'start'});
+    });
+  });
+
+  // ===== PHILOSOPHY GRID RESPONSIVE (handled by CSS now) =====
+
+})();
+</script>
+
+</body>
+</html>
+
