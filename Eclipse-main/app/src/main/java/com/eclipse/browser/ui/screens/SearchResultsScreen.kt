@@ -12,8 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -678,7 +678,8 @@ private fun SearchBarInline(
             BasicTextField(
                 value = searchText,
                 onValueChange = { searchText = it },
-                textStyle = Outfit.copy(
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontFamily = Outfit,
                     fontSize = 14.sp,
                     color = TextPrimary
                 ),
