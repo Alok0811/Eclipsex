@@ -230,8 +230,6 @@ fun EclipseApp(vm: HomeViewModel) {
                             adBlockOn = state.adBlockOn,
                             refreshNonce = state.webRefreshNonce,
                             extensions = extensionsList,
-                            webViewAction = state.webViewAction,
-                            activeTabId = state.activeTabId,
                             onUrlChanged = { url, title -> vm.updateTabInfo(url, title) },
                             onAdBlocked = { domain -> vm.onAdBlocked(domain) },
                             onBack = { vm.goHome() },
@@ -239,10 +237,10 @@ fun EclipseApp(vm: HomeViewModel) {
                             onEnterFullscreen = { vm.setFullscreen(true) },
                             onExitFullscreen = { vm.setFullscreen(false) },
                             onMinimizeVideo = { vm.onVideoMinimized() },
+                            onMediaPlayingChanged = { isPlaying -> vm.setMediaPlaying(isPlaying, state.activeTabId) },
                             onCanGoBackChanged = { vm.setCanGoBack(it) },
                             onCanGoForwardChanged = { vm.setCanGoForward(it) },
-                            onMediaPlayingChanged = { isPlaying -> vm.setMediaPlaying(isPlaying, state.activeTabId) },
-                            onMediaStopped = { vm.stopMediaPlayback() },
+                            webViewAction = state.webViewAction,
                             onWebViewActionConsumed = { vm.clearWebViewAction() },
                             modifier = Modifier.fillMaxSize()
                         )

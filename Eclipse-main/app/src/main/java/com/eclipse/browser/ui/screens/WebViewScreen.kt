@@ -26,8 +26,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -55,20 +55,18 @@ fun WebViewScreen(
     adBlockOn: Boolean,
     refreshNonce: Int,
     extensions: List<com.eclipse.browser.ui.screens.Extension>,
-    webViewAction: com.eclipse.browser.ui.viewmodel.WebViewAction,
-    activeTabId: Int,
     onUrlChanged: (String, String) -> Unit,
     onAdBlocked: (String) -> Unit,
     onBack: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") onForward: () -> Unit,
+    onForward: () -> Unit,
     onEnterFullscreen: () -> Unit,
     onExitFullscreen: () -> Unit,
     onMinimizeVideo: () -> Unit,
-    onCanGoBackChanged: (Boolean) -> Unit,
-    onCanGoForwardChanged: (Boolean) -> Unit,
-    onMediaPlayingChanged: (Boolean) -> Unit,
-    onMediaStopped: () -> Unit,
-    onWebViewActionConsumed: () -> Unit,
+    onMediaPlayingChanged: (Boolean) -> Unit = {},
+    onCanGoBackChanged: (Boolean) -> Unit = {},
+    onCanGoForwardChanged: (Boolean) -> Unit = {},
+    webViewAction: com.eclipse.browser.ui.viewmodel.WebViewAction = com.eclipse.browser.ui.viewmodel.WebViewAction.NONE,
+    onWebViewActionConsumed: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -81,7 +79,6 @@ fun WebViewScreen(
     var progress by remember { mutableStateOf(0) }
     var pullDistance by remember { mutableStateOf(0f) }
     var videoSwipeDistance by remember { mutableStateOf(0f) }
-    var currentTabId by remember { mutableStateOf(activeTabId) }
     val pullThreshold = 120f
     val videoSwipeThreshold = 150f
 
@@ -91,7 +88,7 @@ fun WebViewScreen(
         }
     }
 
-    // Feature 1: Handle webView navigation actions from ViewModel
+    // Handle navigation actions from ViewModel (back/forward buttons)
     LaunchedEffect(webViewAction) {
         when (webViewAction) {
             com.eclipse.browser.ui.viewmodel.WebViewAction.GO_BACK -> {
@@ -110,22 +107,9 @@ fun WebViewScreen(
     var fullscreenView by remember { mutableStateOf<View?>(null) }
     var fullscreenCallback by remember { mutableStateOf<WebChromeClient.CustomViewCallback?>(null) }
     val isFullscreen = fullscreenView != null
-
-    // Feature 2: PiP (Picture-in-Picture) support for true mini player
-    val isPipMode by remember { mutableStateOf(false) }
-    
-    // Track video element bounds for PiP
-    var videoRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
     
     // Video playback state (for non-fullscreen videos)
     var isVideoPlaying by remember { mutableStateOf(false) }
-
-    // Feature 2: Mini player state
-    var isMiniPlayerActive by remember { mutableStateOf(false) }
-    var miniPlayerUrl by remember { mutableStateOf("") }
-
-    // Feature 2: Track if we've already offered mini player for current video
-    var miniPlayerOffered by remember { mutableStateOf(false) }
 
     // Section 38.10: Back handler — fullscreen exits first
     BackHandler(enabled = isFullscreen) {
@@ -139,63 +123,13 @@ fun WebViewScreen(
         onExitFullscreen()
     }
 
-    // Feature 1 & 2: Back handler with mini player support
-    BackHandler(enabled = !isFullscreen && !isMiniPlayerActive) {
+    // Normal back handler - use WebView history, only exit when no more history
+    BackHandler(enabled = !isFullscreen) {
         val wv = webView
-        // Feature 2: If video is playing and mini player not yet active, trigger mini player
-        if (isVideoPlaying && !miniPlayerOffered) {
-            miniPlayerOffered = true
-            isMiniPlayerActive = true
-            miniPlayerUrl = currentUrl
-            // Inject script to notify webpage about mini player mode
-            injectVideoControlScript(wv, true)
-            onMinimizeVideo()
-            return@BackHandler
-        }
-        // Feature 1: Use WebView history - go back one page at a time
         if (wv?.canGoBack() == true) {
             wv.goBack()
-            miniPlayerOffered = false
         } else {
             onBack()
-        }
-    }
-
-    // Handle back press when mini player is active
-    BackHandler(enabled = isMiniPlayerActive) {
-        isMiniPlayerActive = false
-        webView?.goBack()
-    }
-
-    // Feature 2/3: Continuously check for video playback every 2 seconds
-    LaunchedEffect(isLoading, currentUrl) {
-        if (!isLoading && currentUrl.isNotBlank()) {
-            while (true) {
-                delay(2000)
-                webView?.evaluateJavascript(
-                    """
-                    (function() {
-                        var videos = document.querySelectorAll('video');
-                        var playing = false;
-                        videos.forEach(function(v) {
-                            if (!v.paused && !v.ended && v.currentTime > 0) playing = true;
-                        });
-                        return playing;
-                    })();
-                    """.trimIndent()
-                ) { result ->
-                    val isPlaying = result == "true"
-                    if (isPlaying != isVideoPlaying) {
-                        isVideoPlaying = isPlaying
-                        if (isPlaying) {
-                            onMediaPlayingChanged(true)
-                            miniPlayerOffered = false
-                        } else {
-                            onMediaStopped()
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -293,24 +227,13 @@ fun WebViewScreen(
                             // Section 18: Inject enabled extensions for this URL
                             injectExtensions(view, url ?: "", extensions)
                             
-                            // Detect if page has video elements and check if playing
+                            // Detect if page has video elements
                             view?.evaluateJavascript(
-                                """
-                                (function() {
-                                    var video = document.querySelector('video');
-                                    if (!video) return false;
-                                    return !video.paused && !video.ended && video.currentTime > 0;
-                                })();
-                                """.trimIndent()
+                                "(function() { return document.querySelector('video') !== null; })();"
                             ) { result ->
-                                val isPlaying = result == "true"
-                                isVideoPlaying = isPlaying
-                                if (isPlaying) {
-                                    onMediaPlayingChanged(true)
-                                    miniPlayerOffered = false
-                                } else {
-                                    onMediaStopped()
-                                }
+                                val hasVideo = result == "true"
+                                isVideoPlaying = hasVideo
+                                onMediaPlayingChanged(hasVideo)
                             }
                         }
 
@@ -351,104 +274,44 @@ fun WebViewScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Feature 2: Full-screen drag gesture for mini player (when video is playing)
-        // This overlay covers the screen to detect drag gestures on video
+        // Section 20: Pull-down refresh gesture - offset to not block header
+        // Also handles swipe-down to minimize video
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(isVideoPlaying, isFullscreen, isMiniPlayerActive) {
-                    if (isVideoPlaying && !isFullscreen && !isMiniPlayerActive) {
-                        detectVerticalDragGestures(
-                            onVerticalDrag = { change, dragAmount ->
-                                if (dragAmount > 0) {
-                                    // Track video swipe distance
-                                    videoSwipeDistance = (videoSwipeDistance + dragAmount).coerceAtMost(300f)
-                                    change.consume()
+                .fillMaxWidth()
+                .height(120.dp)
+                .align(Alignment.TopCenter)
+                .padding(top = 56.dp)
+                .pointerInput(isLoading, isVideoPlaying, isFullscreen) {
+                    detectVerticalDragGestures(
+                        onVerticalDrag = { change, dragAmount ->
+                            if (dragAmount > 0 && !isLoading) {
+                                // If video is playing (not fullscreen), track video swipe
+                                if (isVideoPlaying && !isFullscreen) {
+                                    videoSwipeDistance = (videoSwipeDistance + dragAmount).coerceAtMost(250f)
+                                } else {
+                                    pullDistance = (pullDistance + dragAmount).coerceAtMost(220f)
                                 }
-                            },
-                            onDragEnd = {
-                                // If dragged down past threshold (150px), trigger mini player
-                                if (videoSwipeDistance >= videoSwipeThreshold) {
-                                    miniPlayerOffered = true
-                                    isMiniPlayerActive = true
-                                    miniPlayerUrl = currentUrl
-                                    injectVideoControlScript(webView, true)
-                                    onMinimizeVideo()
-                                }
-                                videoSwipeDistance = 0f
-                            },
-                            onDragCancel = {
-                                videoSwipeDistance = 0f
+                                change.consume()
                             }
-                        )
-                    }
+                        },
+                        onDragEnd = {
+                            // Check video swipe first
+                            if (isVideoPlaying && !isFullscreen && videoSwipeDistance >= videoSwipeThreshold) {
+                                onMinimizeVideo()
+                            } else if (pullDistance >= pullThreshold && !isLoading) {
+                                webView?.reload()
+                            }
+                            pullDistance = 0f
+                            videoSwipeDistance = 0f
+                        },
+                        onDragCancel = {
+                            pullDistance = 0f
+                            videoSwipeDistance = 0f
+                        }
+                    )
                 }
         )
-
-        // Section 20: Pull-down refresh gesture (only when NO video is playing)
-        if (!isVideoPlaying) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .align(Alignment.TopCenter)
-                    .padding(top = 56.dp)
-                    .pointerInput(isLoading, isFullscreen) {
-                        detectVerticalDragGestures(
-                            onVerticalDrag = { change, dragAmount ->
-                                if (dragAmount > 0 && !isLoading) {
-                                    pullDistance = (pullDistance + dragAmount).coerceAtMost(220f)
-                                    change.consume()
-                                }
-                            },
-                            onDragEnd = {
-                                if (pullDistance >= pullThreshold && !isLoading) {
-                                    webView?.reload()
-                                }
-                                pullDistance = 0f
-                            },
-                            onDragCancel = {
-                                pullDistance = 0f
-                            }
-                        )
-                    }
-            )
-        }
-
-        // Feature 2: Visual feedback during drag (video shrinking indicator)
-        AnimatedVisibility(
-            visible = videoSwipeDistance > 30f && isVideoPlaying,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f * (videoSwipeDistance / 300f)))
-            ) {
-                // Shrinking video preview placeholder
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(
-                            width = (320 * (1 - videoSwipeDistance / 600f)).coerceAtLeast(160f).dp,
-                            height = (180 * (1 - videoSwipeDistance / 600f)).coerceAtLeast(90f).dp
-                        )
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.DarkGray)
-                ) {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = if (videoSwipeDistance >= videoSwipeThreshold) "Release to minimize" else "Pull down",
-                            color = Color.White,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            }
-        }
 
         // Section 19: Loading indicator — Saturn spinner, not black screen
         AnimatedVisibility(
@@ -508,42 +371,6 @@ fun WebViewScreen(
                 AndroidView(
                     factory = { fullscreenView!! },
                     modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
-
-        // Feature 2: Mini player overlay - shown when video is minimized
-        // The mini player floats in the corner, the page behind stays interactive
-        AnimatedVisibility(
-            visible = isMiniPlayerActive,
-            enter = scaleIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) + fadeIn(tween(200)),
-            exit = scaleOut(animationSpec = tween(200)) + fadeOut(tween(150)),
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(100f)
-        ) {
-            // Empty Box with align - MiniPlayer positions itself in the corner
-            Box(modifier = Modifier.fillMaxSize()) {
-                MiniPlayer(
-                    url = miniPlayerUrl,
-                    accentColor = accentColor,
-                    onMaximize = {
-                        // Exit mini player mode, let video continue in WebView
-                        injectVideoControlScript(webView, false)
-                        isMiniPlayerActive = false
-                        onEnterFullscreen()
-                    },
-                    onClose = {
-                        // Exit mini player and go back
-                        injectVideoControlScript(webView, false)
-                        isMiniPlayerActive = false
-                        webView?.goBack()
-                    },
-                    onPlayPause = {
-                        // Toggle video playback
-                        controlVideo(webView, "play")
-                    },
-                    modifier = Modifier.align(Alignment.BottomEnd)
                 )
             }
         }
@@ -646,231 +473,6 @@ private fun restoreSystemBars(context: Context) {
         @Suppress("DEPRECATION")
         activity.window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
     }
-}
-
-// Feature 2: Mini player composable - floating corner player
-// The WebView continues playing behind this, this just provides the floating UI
-@Composable
-private fun MiniPlayer(
-    url: String,
-    accentColor: Color,
-    onMaximize: () -> Unit,
-    onClose: () -> Unit,
-    onPlayPause: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    // This Box floats in the corner and does NOT block the page behind
-    Box(
-        modifier = modifier
-            .padding(16.dp)
-            .width(180.dp)
-            .height(100.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF1A1A1A).copy(alpha = 0.95f))
-            .border(1.5.dp, accentColor.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-            .pointerInput(Unit) {} // Allow touch to pass through to page
-    ) {
-        // Gradient overlay at bottom for controls visibility
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .align(Alignment.BottomCenter)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.8f)
-                        )
-                    )
-                )
-        )
-
-        // Video info at top
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "▶ Playing",
-                color = Color.White,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = extractDomain(url),
-                color = Color.Gray,
-                fontSize = 9.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp)
-            )
-        }
-
-        // Controls overlay at bottom
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Play/Pause button
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.15f))
-                    .clickable { onPlayPause() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "▶",
-                    color = Color.White,
-                    fontSize = 10.sp
-                )
-            }
-            // Maximize button
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(accentColor.copy(alpha = 0.3f))
-                    .clickable { onMaximize() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "⛶",
-                    color = accentColor,
-                    fontSize = 12.sp
-                )
-            }
-            // Close button - goes back in history
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.15f))
-                    .clickable { onClose() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "✕",
-                    color = Color.White,
-                    fontSize = 10.sp
-                )
-            }
-        }
-    }
-}
-
-private fun extractDomain(url: String): String {
-    return try {
-        java.net.URI(url).host?.replace("www.", "") ?: url
-    } catch (e: Exception) {
-        url
-    }
-}
-
-// Feature 2: Inject JavaScript to handle video mini player
-// This notifies the webpage when mini player mode is active so it can adapt
-// Also injects touch event handlers to detect long press + drag on video
-private fun injectVideoControlScript(webView: WebView?, isMiniPlayer: Boolean) {
-    if (webView == null) return
-    
-    val script = """
-        (function() {
-            // Find all video elements
-            var videos = document.querySelectorAll('video');
-            videos.forEach(function(video) {
-                // Store mini player mode state
-                video.eclipseMiniPlayerMode = $isMiniPlayer;
-                
-                // Add touch handlers for long press + drag detection
-                if ($isMiniPlayer) {
-                    var startY = 0;
-                    var startX = 0;
-                    var isDragging = false;
-                    var dragThreshold = 50;
-                    
-                    video.addEventListener('touchstart', function(e) {
-                        startY = e.touches[0].clientY;
-                        startX = e.touches[0].clientX;
-                        isDragging = false;
-                    }, {passive: true});
-                    
-                    video.addEventListener('touchmove', function(e) {
-                        var deltaY = e.touches[0].clientY - startY;
-                        var deltaX = e.touches[0].clientX - startX;
-                        
-                        if (deltaY > dragThreshold && deltaY > Math.abs(deltaX)) {
-                            isDragging = true;
-                            // Report drag progress (0-100)
-                            var progress = Math.min(100, (deltaY - dragThreshold) * 2);
-                            if (window.eclipseDragCallback) {
-                                window.eclipseDragCallback(progress);
-                            }
-                        }
-                    }, {passive: true});
-                    
-                    video.addEventListener('touchend', function(e) {
-                        if (isDragging && window.eclipseDragEndCallback) {
-                            window.eclipseDragEndCallback();
-                        }
-                        isDragging = false;
-                    }, {passive: true});
-                }
-                
-                // Notify Eclipse app about video state
-                if (window.eclipseVideoCallback) {
-                    window.eclipseVideoCallback({
-                        hasVideo: true,
-                        playing: !video.paused,
-                        miniPlayerMode: $isMiniPlayer,
-                        duration: video.duration,
-                        currentTime: video.currentTime
-                    });
-                }
-            });
-        })();
-    """.trimIndent()
-    
-    webView.evaluateJavascript(script, null)
-}
-
-// Feature 2: Control video from mini player
-private fun controlVideo(webView: WebView?, action: String) {
-    if (webView == null) return
-    
-    val script = when (action) {
-        "play" -> """
-            (function() {
-                var videos = document.querySelectorAll('video');
-                videos.forEach(function(v) { v.play(); });
-            })();
-        """.trimIndent()
-        "pause" -> """
-            (function() {
-                var videos = document.querySelectorAll('video');
-                videos.forEach(function(v) { v.pause(); });
-            })();
-        """.trimIndent()
-        "exitMiniPlayer" -> """
-            (function() {
-                var videos = document.querySelectorAll('video');
-                videos.forEach(function(video) {
-                    video.eclipseMiniPlayerMode = false;
-                });
-            })();
-        """.trimIndent()
-        else -> return
-    }
-    
-    webView.evaluateJavascript(script, null)
 }
 
 // Needed import for zIndex
