@@ -351,44 +351,104 @@ fun WebViewScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Section 20: Pull-down refresh gesture - offset to not block header
-        // Also handles swipe-down to minimize video
+        // Feature 2: Full-screen drag gesture for mini player (when video is playing)
+        // This overlay covers the screen to detect drag gestures on video
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .align(Alignment.TopCenter)
-                .padding(top = 56.dp)
-                .pointerInput(isLoading, isVideoPlaying, isFullscreen) {
-                    detectVerticalDragGestures(
-                        onVerticalDrag = { change, dragAmount ->
-                            if (dragAmount > 0 && !isLoading) {
-                                // If video is playing (not fullscreen), track video swipe
-                                if (isVideoPlaying && !isFullscreen) {
-                                    videoSwipeDistance = (videoSwipeDistance + dragAmount).coerceAtMost(250f)
-                                } else {
-                                    pullDistance = (pullDistance + dragAmount).coerceAtMost(220f)
+                .fillMaxSize()
+                .pointerInput(isVideoPlaying, isFullscreen, isMiniPlayerActive) {
+                    if (isVideoPlaying && !isFullscreen && !isMiniPlayerActive) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                if (dragAmount > 0) {
+                                    // Track video swipe distance
+                                    videoSwipeDistance = (videoSwipeDistance + dragAmount).coerceAtMost(300f)
+                                    change.consume()
                                 }
-                                change.consume()
+                            },
+                            onDragEnd = {
+                                // If dragged down past threshold (150px), trigger mini player
+                                if (videoSwipeDistance >= videoSwipeThreshold) {
+                                    miniPlayerOffered = true
+                                    isMiniPlayerActive = true
+                                    miniPlayerUrl = currentUrl
+                                    injectVideoControlScript(webView, true)
+                                    onMinimizeVideo()
+                                }
+                                videoSwipeDistance = 0f
+                            },
+                            onDragCancel = {
+                                videoSwipeDistance = 0f
                             }
-                        },
-                        onDragEnd = {
-                            // Check video swipe first
-                            if (isVideoPlaying && !isFullscreen && videoSwipeDistance >= videoSwipeThreshold) {
-                                onMinimizeVideo()
-                            } else if (pullDistance >= pullThreshold && !isLoading) {
-                                webView?.reload()
-                            }
-                            pullDistance = 0f
-                            videoSwipeDistance = 0f
-                        },
-                        onDragCancel = {
-                            pullDistance = 0f
-                            videoSwipeDistance = 0f
-                        }
-                    )
+                        )
+                    }
                 }
         )
+
+        // Section 20: Pull-down refresh gesture (only when NO video is playing)
+        if (!isVideoPlaying) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .align(Alignment.TopCenter)
+                    .padding(top = 56.dp)
+                    .pointerInput(isLoading, isFullscreen) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                if (dragAmount > 0 && !isLoading) {
+                                    pullDistance = (pullDistance + dragAmount).coerceAtMost(220f)
+                                    change.consume()
+                                }
+                            },
+                            onDragEnd = {
+                                if (pullDistance >= pullThreshold && !isLoading) {
+                                    webView?.reload()
+                                }
+                                pullDistance = 0f
+                            },
+                            onDragCancel = {
+                                pullDistance = 0f
+                            }
+                        )
+                    }
+            )
+        }
+
+        // Feature 2: Visual feedback during drag (video shrinking indicator)
+        AnimatedVisibility(
+            visible = videoSwipeDistance > 30f && isVideoPlaying,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f * (videoSwipeDistance / 300f)))
+            ) {
+                // Shrinking video preview placeholder
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(
+                            width = (320 * (1 - videoSwipeDistance / 600f)).coerceAtLeast(160f).dp,
+                            height = (180 * (1 - videoSwipeDistance / 600f)).coerceAtLeast(90f).dp
+                        )
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.DarkGray)
+                ) {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = if (videoSwipeDistance >= videoSwipeThreshold) "Release to minimize" else "Pull down",
+                            color = Color.White,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
 
         // Section 19: Loading indicator — Saturn spinner, not black screen
         AnimatedVisibility(
@@ -718,7 +778,7 @@ private fun extractDomain(url: String): String {
 
 // Feature 2: Inject JavaScript to handle video mini player
 // This notifies the webpage when mini player mode is active so it can adapt
-// This allows the webpage to know when mini player mode is active
+// Also injects touch event handlers to detect long press + drag on video
 private fun injectVideoControlScript(webView: WebView?, isMiniPlayer: Boolean) {
     if (webView == null) return
     
@@ -727,8 +787,44 @@ private fun injectVideoControlScript(webView: WebView?, isMiniPlayer: Boolean) {
             // Find all video elements
             var videos = document.querySelectorAll('video');
             videos.forEach(function(video) {
-                // Store original state
+                // Store mini player mode state
                 video.eclipseMiniPlayerMode = $isMiniPlayer;
+                
+                // Add touch handlers for long press + drag detection
+                if ($isMiniPlayer) {
+                    var startY = 0;
+                    var startX = 0;
+                    var isDragging = false;
+                    var dragThreshold = 50;
+                    
+                    video.addEventListener('touchstart', function(e) {
+                        startY = e.touches[0].clientY;
+                        startX = e.touches[0].clientX;
+                        isDragging = false;
+                    }, {passive: true});
+                    
+                    video.addEventListener('touchmove', function(e) {
+                        var deltaY = e.touches[0].clientY - startY;
+                        var deltaX = e.touches[0].clientX - startX;
+                        
+                        if (deltaY > dragThreshold && deltaY > Math.abs(deltaX)) {
+                            isDragging = true;
+                            // Report drag progress (0-100)
+                            var progress = Math.min(100, (deltaY - dragThreshold) * 2);
+                            if (window.eclipseDragCallback) {
+                                window.eclipseDragCallback(progress);
+                            }
+                        }
+                    }, {passive: true});
+                    
+                    video.addEventListener('touchend', function(e) {
+                        if (isDragging && window.eclipseDragEndCallback) {
+                            window.eclipseDragEndCallback();
+                        }
+                        isDragging = false;
+                    }, {passive: true});
+                }
+                
                 // Notify Eclipse app about video state
                 if (window.eclipseVideoCallback) {
                     window.eclipseVideoCallback({
