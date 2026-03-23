@@ -62,6 +62,10 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         vm.onAppPaused()
+        // Feature 4: Start background playback when leaving app (if media might be playing)
+        if (vm.uiState.value.isMediaPlaying) {
+            MediaPlaybackService.startPlayback(this)
+        }
     }
 
     override fun onStop() {
@@ -72,6 +76,14 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.onAppResumed()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        // Feature 3/4: When app is being removed from recents, stop the service
+        if (level == TRIM_MEMORY_RUNNING_CRITICAL || level == TRIM_MEMORY_COMPLETE) {
+            MediaPlaybackService.stopPlayback(this)
+        }
     }
 
     private fun verifyAppIntegrity(): Boolean {
@@ -211,13 +223,18 @@ fun EclipseApp(vm: HomeViewModel) {
                             adBlockOn = state.adBlockOn,
                             refreshNonce = state.webRefreshNonce,
                             extensions = extensionsList,
+                            webViewAction = state.webViewAction,
                             onUrlChanged = { url, title -> vm.updateTabInfo(url, title) },
                             onAdBlocked = { domain -> vm.onAdBlocked(domain) },
                             onBack = { vm.goHome() },
-                            onForward = {},
+                            onForward = { vm.goForward() },
                             onEnterFullscreen = { vm.setFullscreen(true) },
                             onExitFullscreen = { vm.setFullscreen(false) },
-                            onMinimizeVideo = { vm.goHome() },
+                            onMinimizeVideo = { vm.onVideoMinimized() },
+                            onCanGoBackChanged = { vm.setCanGoBack(it) },
+                            onCanGoForwardChanged = { vm.setCanGoForward(it) },
+                            onMediaPlayingChanged = { vm.setMediaPlaying(it) },
+                            onWebViewActionConsumed = { vm.clearWebViewAction() },
                             modifier = Modifier.fillMaxSize()
                         )
 
@@ -285,14 +302,17 @@ fun EclipseApp(vm: HomeViewModel) {
                 BottomNavBar(
                     accentColor = state.accentColor,
                     tabCount = state.tabs.size,
-                    canGoBack = state.currentScreen == Screen.WEBVIEW,
-                    canGoForward = state.currentScreen == Screen.WEBVIEW,
+                    canGoBack = state.canGoBack,
+                    canGoForward = state.canGoForward,
                     isIncognito = state.isIncognito,
                     onBack = {
-                        // Section 21: Back from WebView goes to previous page or home
-                        vm.goHome()
+                        // Feature 1: Back goes through WebView history first
+                        vm.goBack()
                     },
-                    onForward = { },
+                    onForward = {
+                        // Feature 1: Forward navigates forward in WebView history
+                        vm.goForward()
+                    },
                     onHome = { vm.goHome() },
                     onTabs = { vm.showSheet("tabs") },
                     onMenu = { vm.showSheet("menu") }

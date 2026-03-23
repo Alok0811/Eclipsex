@@ -26,8 +26,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.eclipse.browser.ui.theme.*
-import kotlinx.coroutines.delay
 
 // Extension model matching the one in StorageManager DEFAULT_EXTENSIONS
 private data class InjectExtension(
@@ -55,13 +54,18 @@ fun WebViewScreen(
     adBlockOn: Boolean,
     refreshNonce: Int,
     extensions: List<com.eclipse.browser.ui.screens.Extension>,
+    webViewAction: com.eclipse.browser.ui.viewmodel.WebViewAction,
     onUrlChanged: (String, String) -> Unit,
     onAdBlocked: (String) -> Unit,
     onBack: () -> Unit,
-    onForward: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onForward: () -> Unit,
     onEnterFullscreen: () -> Unit,
     onExitFullscreen: () -> Unit,
     onMinimizeVideo: () -> Unit,
+    onCanGoBackChanged: (Boolean) -> Unit,
+    onCanGoForwardChanged: (Boolean) -> Unit,
+    onMediaPlayingChanged: (Boolean) -> Unit,
+    onWebViewActionConsumed: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -83,13 +87,38 @@ fun WebViewScreen(
         }
     }
 
+    // Feature 1: Handle webView navigation actions from ViewModel
+    LaunchedEffect(webViewAction) {
+        when (webViewAction) {
+            com.eclipse.browser.ui.viewmodel.WebViewAction.GO_BACK -> {
+                webView?.goBack()
+                onWebViewActionConsumed()
+            }
+            com.eclipse.browser.ui.viewmodel.WebViewAction.GO_FORWARD -> {
+                webView?.goForward()
+                onWebViewActionConsumed()
+            }
+            com.eclipse.browser.ui.viewmodel.WebViewAction.NONE -> {}
+        }
+    }
+
     // Section 38.1: Fullscreen state tracking
     var fullscreenView by remember { mutableStateOf<View?>(null) }
     var fullscreenCallback by remember { mutableStateOf<WebChromeClient.CustomViewCallback?>(null) }
     val isFullscreen = fullscreenView != null
+
+    // Feature 2: PiP (Picture-in-Picture) support for true mini player
+    val isPipMode by remember { mutableStateOf(false) }
+    
+    // Track video element bounds for PiP
+    var videoRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
     
     // Video playback state (for non-fullscreen videos)
     var isVideoPlaying by remember { mutableStateOf(false) }
+
+    // Feature 2: Mini player state
+    var isMiniPlayerActive by remember { mutableStateOf(false) }
+    var miniPlayerUrl by remember { mutableStateOf("") }
 
     // Section 38.10: Back handler — fullscreen exits first
     BackHandler(enabled = isFullscreen) {
@@ -103,9 +132,19 @@ fun WebViewScreen(
         onExitFullscreen()
     }
 
-    // Normal back handler - use WebView history, only exit when no more history
+    // Feature 1 & 2: Back handler with mini player support
     BackHandler(enabled = !isFullscreen) {
         val wv = webView
+        // Feature 2: If video is playing and mini player not yet active, trigger mini player
+        if (isVideoPlaying && !isMiniPlayerActive) {
+            isMiniPlayerActive = true
+            miniPlayerUrl = currentUrl
+            // Inject script to notify webpage about mini player mode
+            injectVideoControlScript(wv, true)
+            onMinimizeVideo()
+            return@BackHandler
+        }
+        // Feature 1: Use WebView history - go back one page at a time
         if (wv?.canGoBack() == true) {
             wv.goBack()
         } else {
@@ -195,19 +234,31 @@ fun WebViewScreen(
 
                         override fun onPageFinished(view: WebView?, url: String?) {
                             isLoading = false
-                            canGoBack = view?.canGoBack() ?: false
-                            canGoForward = view?.canGoForward() ?: false
+                            val canBack = view?.canGoBack() ?: false
+                            val canFwd = view?.canGoForward() ?: false
+                            canGoBack = canBack
+                            canGoForward = canFwd
+                            onCanGoBackChanged(canBack)
+                            onCanGoForwardChanged(canFwd)
                             currentUrl = url ?: ""
                             onUrlChanged(url ?: "", pageTitle)
 
                             // Section 18: Inject enabled extensions for this URL
                             injectExtensions(view, url ?: "", extensions)
                             
-                            // Detect if page has video elements
+                            // Detect if page has video elements and check if playing
                             view?.evaluateJavascript(
-                                "(function() { return document.querySelector('video') !== null; })();"
+                                """
+                                (function() {
+                                    var video = document.querySelector('video');
+                                    if (!video) return false;
+                                    return !video.paused && !video.ended && video.currentTime > 0;
+                                })();
+                                """.trimIndent()
                             ) { result ->
-                                isVideoPlaying = result == "true"
+                                val isPlaying = result == "true"
+                                isVideoPlaying = isPlaying
+                                onMediaPlayingChanged(isPlaying)
                             }
                         }
 
@@ -348,6 +399,42 @@ fun WebViewScreen(
                 )
             }
         }
+
+        // Feature 2: Mini player overlay - shown when video is minimized
+        // The mini player floats in the corner, the page behind stays interactive
+        AnimatedVisibility(
+            visible = isMiniPlayerActive,
+            enter = scaleIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) + fadeIn(tween(200)),
+            exit = scaleOut(animationSpec = tween(200)) + fadeOut(tween(150)),
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(100f)
+        ) {
+            // Empty Box with align - MiniPlayer positions itself in the corner
+            Box(modifier = Modifier.fillMaxSize()) {
+                MiniPlayer(
+                    url = miniPlayerUrl,
+                    accentColor = accentColor,
+                    onMaximize = {
+                        // Exit mini player mode, let video continue in WebView
+                        injectVideoControlScript(webView, false)
+                        isMiniPlayerActive = false
+                        onEnterFullscreen()
+                    },
+                    onClose = {
+                        // Exit mini player and go back
+                        injectVideoControlScript(webView, false)
+                        isMiniPlayerActive = false
+                        webView?.goBack()
+                    },
+                    onPlayPause = {
+                        // Toggle video playback
+                        controlVideo(webView, "play")
+                    },
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                )
+            }
+        }
     }
 }
 
@@ -447,6 +534,195 @@ private fun restoreSystemBars(context: Context) {
         @Suppress("DEPRECATION")
         activity.window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
     }
+}
+
+// Feature 2: Mini player composable - floating corner player
+// The WebView continues playing behind this, this just provides the floating UI
+@Composable
+private fun MiniPlayer(
+    url: String,
+    accentColor: Color,
+    onMaximize: () -> Unit,
+    onClose: () -> Unit,
+    onPlayPause: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // This Box floats in the corner and does NOT block the page behind
+    Box(
+        modifier = modifier
+            .padding(16.dp)
+            .width(180.dp)
+            .height(100.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF1A1A1A).copy(alpha = 0.95f))
+            .border(1.5.dp, accentColor.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+            .pointerInput(Unit) {} // Allow touch to pass through to page
+    ) {
+        // Gradient overlay at bottom for controls visibility
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.8f)
+                        )
+                    )
+                )
+        )
+
+        // Video info at top
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "▶ Playing",
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = extractDomain(url),
+                color = Color.Gray,
+                fontSize = 9.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+
+        // Controls overlay at bottom
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Play/Pause button
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.15f))
+                    .clickable { onPlayPause() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "▶",
+                    color = Color.White,
+                    fontSize = 10.sp
+                )
+            }
+            // Maximize button
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(accentColor.copy(alpha = 0.3f))
+                    .clickable { onMaximize() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "⛶",
+                    color = accentColor,
+                    fontSize = 12.sp
+                )
+            }
+            // Close button - goes back in history
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.15f))
+                    .clickable { onClose() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "✕",
+                    color = Color.White,
+                    fontSize = 10.sp
+                )
+            }
+        }
+    }
+}
+
+private fun extractDomain(url: String): String {
+    return try {
+        java.net.URI(url).host?.replace("www.", "") ?: url
+    } catch (e: Exception) {
+        url
+    }
+}
+
+// Feature 2: Inject JavaScript to handle video mini player
+// This notifies the webpage when mini player mode is active so it can adapt
+// This allows the webpage to know when mini player mode is active
+private fun injectVideoControlScript(webView: WebView?, isMiniPlayer: Boolean) {
+    if (webView == null) return
+    
+    val script = """
+        (function() {
+            // Find all video elements
+            var videos = document.querySelectorAll('video');
+            videos.forEach(function(video) {
+                // Store original state
+                video.eclipseMiniPlayerMode = $isMiniPlayer;
+                // Notify Eclipse app about video state
+                if (window.eclipseVideoCallback) {
+                    window.eclipseVideoCallback({
+                        hasVideo: true,
+                        playing: !video.paused,
+                        miniPlayerMode: $isMiniPlayer,
+                        duration: video.duration,
+                        currentTime: video.currentTime
+                    });
+                }
+            });
+        })();
+    """.trimIndent()
+    
+    webView.evaluateJavascript(script, null)
+}
+
+// Feature 2: Control video from mini player
+private fun controlVideo(webView: WebView?, action: String) {
+    if (webView == null) return
+    
+    val script = when (action) {
+        "play" -> """
+            (function() {
+                var videos = document.querySelectorAll('video');
+                videos.forEach(function(v) { v.play(); });
+            })();
+        """.trimIndent()
+        "pause" -> """
+            (function() {
+                var videos = document.querySelectorAll('video');
+                videos.forEach(function(v) { v.pause(); });
+            })();
+        """.trimIndent()
+        "exitMiniPlayer" -> """
+            (function() {
+                var videos = document.querySelectorAll('video');
+                videos.forEach(function(video) {
+                    video.eclipseMiniPlayerMode = false;
+                });
+            })();
+        """.trimIndent()
+        else -> return
+    }
+    
+    webView.evaluateJavascript(script, null)
 }
 
 // Needed import for zIndex

@@ -138,8 +138,21 @@ data class EclipseUiState(
     // Section 30.13: star opacity reduced during search
     val searchActive: Boolean = false,
     // Hide bottom nav during fullscreen landscape video
-    val isInFullscreen: Boolean = false
+    val isInFullscreen: Boolean = false,
+    // Feature 1: WebView navigation state
+    val canGoBack: Boolean = false,
+    val canGoForward: Boolean = false,
+    // Feature 2: Mini player state
+    val isVideoMinimized: Boolean = false,
+    // Feature 3/4/5: Media playback state for background playback
+    val isMediaPlaying: Boolean = false,
+    // Feature 1: WebView navigation actions
+    val webViewAction: WebViewAction = WebViewAction.NONE
 )
+
+enum class WebViewAction {
+    NONE, GO_BACK, GO_FORWARD
+}
 
 enum class Screen { HOME, WEBVIEW, INCOGNITO, AI_CHAT, SEARCH_RESULTS, EXTENSIONS, BACKGROUND_PICKER }
 
@@ -950,10 +963,47 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 currentScreen = if (it.isIncognito) Screen.INCOGNITO else Screen.HOME,
                 webViewUrl = null,
-                searchActive = false
+                searchActive = false,
+                isVideoMinimized = false
             )
         }
         updateClock()
+    }
+
+    // Feature 1: Navigate back through WebView history or go home
+    fun goBack() {
+        if (_uiState.value.canGoBack) {
+            _uiState.update { it.copy(webViewAction = WebViewAction.GO_BACK) }
+        } else {
+            goHome()
+        }
+    }
+
+    // Feature 1: Navigate forward through WebView history
+    fun goForward() {
+        if (_uiState.value.canGoForward) {
+            _uiState.update { it.copy(webViewAction = WebViewAction.GO_FORWARD) }
+        }
+    }
+
+    // Feature 1: Clear the action after it's consumed
+    fun clearWebViewAction() {
+        _uiState.update { it.copy(webViewAction = WebViewAction.NONE) }
+    }
+
+    // Feature 1: Update canGoBack state from WebView
+    fun setCanGoBack(canGoBack: Boolean) {
+        _uiState.update { it.copy(canGoBack = canGoBack) }
+    }
+
+    // Feature 1: Update canGoForward state from WebView
+    fun setCanGoForward(canGoForward: Boolean) {
+        _uiState.update { it.copy(canGoForward = canGoForward) }
+    }
+
+    // Feature 2: Handle video minimized to mini player
+    fun onVideoMinimized() {
+        _uiState.update { it.copy(isVideoMinimized = true) }
     }
 
     fun openAiChat() {
@@ -1360,6 +1410,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onAppStopped() {
         persistSessionState()
+        // Feature 3/4/5: Stop background service when app is stopped
+        // (Note: The actual service stop is handled in MainActivity.onTrimMemory)
     }
 
     fun onAppResumed() {
@@ -1369,6 +1421,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         if (_uiState.value.aiMessages.isEmpty()) {
             restoreAiHistoryFromStorage()
         }
+        // Feature 3: Do NOT auto-resume media on cold start - this is handled by not restoring playback state
+    }
+
+    // Feature 3/4/5: Track media playback state
+    fun setMediaPlaying(isPlaying: Boolean) {
+        _uiState.update { it.copy(isMediaPlaying = isPlaying) }
     }
 
     fun applySecurityRestrictions() {
