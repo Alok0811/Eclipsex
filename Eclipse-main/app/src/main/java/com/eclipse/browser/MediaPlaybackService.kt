@@ -28,10 +28,14 @@ class MediaPlaybackService : Service() {
         const val ACTION_START = "com.eclipse.browser.action.START_PLAYBACK"
         const val ACTION_STOP = "com.eclipse.browser.action.STOP_PLAYBACK"
 
+        private var isRunning = false
+
         fun startPlayback(context: Context) {
+            if (isRunning) return
             val intent = Intent(context, MediaPlaybackService::class.java).apply {
                 action = ACTION_START
             }
+            isRunning = true
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -40,11 +44,15 @@ class MediaPlaybackService : Service() {
         }
 
         fun stopPlayback(context: Context) {
+            if (!isRunning) return
             val intent = Intent(context, MediaPlaybackService::class.java).apply {
                 action = ACTION_STOP
             }
             context.startService(intent)
+            isRunning = false
         }
+
+        fun isServiceRunning(): Boolean = isRunning
     }
 
     override fun onCreate() {
@@ -65,6 +73,7 @@ class MediaPlaybackService : Service() {
                 releaseWakeLock()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
+                isRunning = false
             }
         }
         return START_STICKY
@@ -75,6 +84,7 @@ class MediaPlaybackService : Service() {
     override fun onDestroy() {
         releaseAudioFocus()
         releaseWakeLock()
+        isRunning = false
         super.onDestroy()
     }
 
@@ -109,6 +119,7 @@ class MediaPlaybackService : Service() {
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
     }
 
@@ -125,21 +136,20 @@ class MediaPlaybackService : Service() {
             .setOnAudioFocusChangeListener { focusChange ->
                 when (focusChange) {
                     AudioManager.AUDIOFOCUS_LOSS -> {
-                        // Feature 4/5: Stop playback when audio focus is lost
-                        // But only if it's a permanent loss (like another app took focus)
                         releaseAudioFocus()
                     }
                     AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                        // Temporary loss - pause playback would be handled by WebView
+                        // Temporary loss - let media continue if possible
                     }
                     AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                        // Can duck - lower volume would be handled by WebView
+                        // Duck the audio
                     }
                     AudioManager.AUDIOFOCUS_GAIN -> {
                         // Regained focus
                     }
                 }
             }
+            .setWillPauseWhenDucked(false)
             .build()
 
         val result = audioManager?.requestAudioFocus(audioFocusRequest!!)
@@ -148,7 +158,11 @@ class MediaPlaybackService : Service() {
 
     private fun releaseAudioFocus() {
         audioFocusRequest?.let {
-            audioManager?.abandonAudioFocusRequest(it)
+            try {
+                audioManager?.abandonAudioFocusRequest(it)
+            } catch (e: Exception) {
+                // Ignore
+            }
         }
         audioFocusRequest = null
         isAudioFocused = false
@@ -169,7 +183,11 @@ class MediaPlaybackService : Service() {
     private fun releaseWakeLock() {
         wakeLock?.let {
             if (it.isHeld) {
-                it.release()
+                try {
+                    it.release()
+                } catch (e: Exception) {
+                    // Ignore
+                }
             }
         }
         wakeLock = null

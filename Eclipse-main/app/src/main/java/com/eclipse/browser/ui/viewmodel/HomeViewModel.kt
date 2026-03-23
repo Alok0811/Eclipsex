@@ -146,6 +146,7 @@ data class EclipseUiState(
     val isVideoMinimized: Boolean = false,
     // Feature 3/4/5: Media playback state for background playback
     val isMediaPlaying: Boolean = false,
+    val mediaPlayingTabId: Int? = null,
     // Feature 1: WebView navigation actions
     val webViewAction: WebViewAction = WebViewAction.NONE
 )
@@ -1111,7 +1112,25 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         if (tabs.size <= 1) { showToast("Cannot close last tab"); return }
         tabs.removeAll { it.id == tabId }
         val activeId = if (_uiState.value.activeTabId == tabId) tabs.last().id else _uiState.value.activeTabId
-        _uiState.update { it.copy(tabs = tabs, activeTabId = activeId) }
+        
+        // Feature 3: If closing the tab with media playing, stop media
+        val wasMediaTab = _uiState.value.mediaPlayingTabId == tabId
+        
+        _uiState.update { 
+            it.copy(
+                tabs = tabs, 
+                activeTabId = activeId,
+                isMediaPlaying = if (wasMediaTab) false else it.isMediaPlaying,
+                mediaPlayingTabId = if (wasMediaTab) null else it.mediaPlayingTabId
+            ) 
+        }
+        
+        // Stop background service if closing the media tab
+        if (wasMediaTab) {
+            // The actual service stop is handled by MainActivity
+            _uiState.update { it.copy(isMediaPlaying = false, mediaPlayingTabId = null) }
+        }
+        
         persistTabs()
     }
 
@@ -1424,9 +1443,24 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         // Feature 3: Do NOT auto-resume media on cold start - this is handled by not restoring playback state
     }
 
-    // Feature 3/4/5: Track media playback state
-    fun setMediaPlaying(isPlaying: Boolean) {
-        _uiState.update { it.copy(isMediaPlaying = isPlaying) }
+    // Feature 3/4/5: Track media playback state with tab ID
+    fun setMediaPlaying(isPlaying: Boolean, tabId: Int? = null) {
+        _uiState.update { 
+            it.copy(
+                isMediaPlaying = isPlaying,
+                mediaPlayingTabId = if (isPlaying) (tabId ?: it.activeTabId) else null
+            ) 
+        }
+    }
+
+    // Feature 3: Stop media playback
+    fun stopMediaPlayback() {
+        _uiState.update { 
+            it.copy(
+                isMediaPlaying = false,
+                mediaPlayingTabId = null
+            ) 
+        }
     }
 
     fun applySecurityRestrictions() {

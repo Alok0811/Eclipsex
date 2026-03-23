@@ -62,8 +62,9 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         vm.onAppPaused()
-        // Feature 4: Start background playback when leaving app (if media might be playing)
-        if (vm.uiState.value.isMediaPlaying) {
+        // Feature 4/5: Start background service when leaving app
+        // Start regardless of isMediaPlaying state since WebView continues in background
+        if (vm.uiState.value.currentScreen == Screen.WEBVIEW) {
             MediaPlaybackService.startPlayback(this)
         }
     }
@@ -71,11 +72,18 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         vm.onAppStopped()
+        // Feature 4/5: Service continues running in background
     }
 
     override fun onResume() {
         super.onResume()
         vm.onAppResumed()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Stop background service when app is destroyed
+        MediaPlaybackService.stopPlayback(this)
     }
 
     override fun onTrimMemory(level: Int) {
@@ -142,7 +150,8 @@ fun EclipseApp(vm: HomeViewModel) {
     }
 
     // Section 21: Global back handler — back navigates screens, only closes on HOME
-    BackHandler(enabled = state.currentScreen != Screen.HOME || state.isIncognito) {
+    // IMPORTANT: WebView screen is handled by WebViewScreen's own BackHandler for history navigation
+    BackHandler(enabled = state.currentScreen != Screen.HOME || state.isIncognito || state.currentScreen == Screen.WEBVIEW) {
         when {
             state.showCustomize  -> vm.hideSheet("customize")
             state.showMenu       -> vm.hideSheet("menu")
@@ -155,10 +164,8 @@ fun EclipseApp(vm: HomeViewModel) {
             state.currentScreen == Screen.AI_CHAT -> vm.goHome()
             state.currentScreen == Screen.SEARCH_RESULTS -> vm.goHome()
             state.currentScreen == Screen.EXTENSIONS -> vm.goHome()
-            state.currentScreen == Screen.WEBVIEW -> {
-                // WebViewScreen has its own back handling for in-page nav
-                vm.goHome()
-            }
+            // WebView screen - DON'T handle here, let WebViewScreen's BackHandler deal with it
+            state.currentScreen == Screen.WEBVIEW -> { /* Do nothing - handled by WebViewScreen */ }
             else -> vm.goHome()
         }
     }
@@ -224,6 +231,7 @@ fun EclipseApp(vm: HomeViewModel) {
                             refreshNonce = state.webRefreshNonce,
                             extensions = extensionsList,
                             webViewAction = state.webViewAction,
+                            activeTabId = state.activeTabId,
                             onUrlChanged = { url, title -> vm.updateTabInfo(url, title) },
                             onAdBlocked = { domain -> vm.onAdBlocked(domain) },
                             onBack = { vm.goHome() },
@@ -233,7 +241,8 @@ fun EclipseApp(vm: HomeViewModel) {
                             onMinimizeVideo = { vm.onVideoMinimized() },
                             onCanGoBackChanged = { vm.setCanGoBack(it) },
                             onCanGoForwardChanged = { vm.setCanGoForward(it) },
-                            onMediaPlayingChanged = { vm.setMediaPlaying(it) },
+                            onMediaPlayingChanged = { isPlaying -> vm.setMediaPlaying(isPlaying, state.activeTabId) },
+                            onMediaStopped = { vm.stopMediaPlayback() },
                             onWebViewActionConsumed = { vm.clearWebViewAction() },
                             modifier = Modifier.fillMaxSize()
                         )

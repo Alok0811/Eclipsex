@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.eclipse.browser.ui.theme.*
+import kotlinx.coroutines.delay
 
 // Extension model matching the one in StorageManager DEFAULT_EXTENSIONS
 private data class InjectExtension(
@@ -55,6 +56,7 @@ fun WebViewScreen(
     refreshNonce: Int,
     extensions: List<com.eclipse.browser.ui.screens.Extension>,
     webViewAction: com.eclipse.browser.ui.viewmodel.WebViewAction,
+    activeTabId: Int,
     onUrlChanged: (String, String) -> Unit,
     onAdBlocked: (String) -> Unit,
     onBack: () -> Unit,
@@ -65,6 +67,7 @@ fun WebViewScreen(
     onCanGoBackChanged: (Boolean) -> Unit,
     onCanGoForwardChanged: (Boolean) -> Unit,
     onMediaPlayingChanged: (Boolean) -> Unit,
+    onMediaStopped: () -> Unit,
     onWebViewActionConsumed: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -78,6 +81,7 @@ fun WebViewScreen(
     var progress by remember { mutableStateOf(0) }
     var pullDistance by remember { mutableStateOf(0f) }
     var videoSwipeDistance by remember { mutableStateOf(0f) }
+    var currentTabId by remember { mutableStateOf(activeTabId) }
     val pullThreshold = 120f
     val videoSwipeThreshold = 150f
 
@@ -120,6 +124,9 @@ fun WebViewScreen(
     var isMiniPlayerActive by remember { mutableStateOf(false) }
     var miniPlayerUrl by remember { mutableStateOf("") }
 
+    // Feature 2: Track if we've already offered mini player for current video
+    var miniPlayerOffered by remember { mutableStateOf(false) }
+
     // Section 38.10: Back handler — fullscreen exits first
     BackHandler(enabled = isFullscreen) {
         fullscreenCallback?.onCustomViewHidden()
@@ -133,10 +140,11 @@ fun WebViewScreen(
     }
 
     // Feature 1 & 2: Back handler with mini player support
-    BackHandler(enabled = !isFullscreen) {
+    BackHandler(enabled = !isFullscreen && !isMiniPlayerActive) {
         val wv = webView
         // Feature 2: If video is playing and mini player not yet active, trigger mini player
-        if (isVideoPlaying && !isMiniPlayerActive) {
+        if (isVideoPlaying && !miniPlayerOffered) {
+            miniPlayerOffered = true
             isMiniPlayerActive = true
             miniPlayerUrl = currentUrl
             // Inject script to notify webpage about mini player mode
@@ -147,8 +155,47 @@ fun WebViewScreen(
         // Feature 1: Use WebView history - go back one page at a time
         if (wv?.canGoBack() == true) {
             wv.goBack()
+            miniPlayerOffered = false
         } else {
             onBack()
+        }
+    }
+
+    // Handle back press when mini player is active
+    BackHandler(enabled = isMiniPlayerActive) {
+        isMiniPlayerActive = false
+        webView?.goBack()
+    }
+
+    // Feature 2/3: Continuously check for video playback every 2 seconds
+    LaunchedEffect(isLoading, currentUrl) {
+        if (!isLoading && currentUrl.isNotBlank()) {
+            while (true) {
+                delay(2000)
+                webView?.evaluateJavascript(
+                    """
+                    (function() {
+                        var videos = document.querySelectorAll('video');
+                        var playing = false;
+                        videos.forEach(function(v) {
+                            if (!v.paused && !v.ended && v.currentTime > 0) playing = true;
+                        });
+                        return playing;
+                    })();
+                    """.trimIndent()
+                ) { result ->
+                    val isPlaying = result == "true"
+                    if (isPlaying != isVideoPlaying) {
+                        isVideoPlaying = isPlaying
+                        if (isPlaying) {
+                            onMediaPlayingChanged(true)
+                            miniPlayerOffered = false
+                        } else {
+                            onMediaStopped()
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -258,7 +305,12 @@ fun WebViewScreen(
                             ) { result ->
                                 val isPlaying = result == "true"
                                 isVideoPlaying = isPlaying
-                                onMediaPlayingChanged(isPlaying)
+                                if (isPlaying) {
+                                    onMediaPlayingChanged(true)
+                                    miniPlayerOffered = false
+                                } else {
+                                    onMediaStopped()
+                                }
                             }
                         }
 
