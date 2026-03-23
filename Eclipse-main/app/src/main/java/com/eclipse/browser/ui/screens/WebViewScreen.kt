@@ -73,7 +73,9 @@ fun WebViewScreen(
     var canGoForward by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0) }
     var pullDistance by remember { mutableStateOf(0f) }
+    var videoSwipeDistance by remember { mutableStateOf(0f) }
     val pullThreshold = 120f
+    val videoSwipeThreshold = 150f
 
     LaunchedEffect(refreshNonce) {
         if (refreshNonce > 0) {
@@ -101,10 +103,13 @@ fun WebViewScreen(
         onExitFullscreen()
     }
 
-    // Normal back handler
+    // Normal back handler - video minimize first, then WebView history, then exit
     BackHandler(enabled = !isFullscreen) {
         val wv = webView
-        if (wv?.canGoBack() == true) {
+        // If video is playing (not fullscreen), minimize it first
+        if (isVideoPlaying && !isFullscreen) {
+            onMinimizeVideo()
+        } else if (wv?.canGoBack() == true) {
             wv.goBack()
         } else {
             onBack()
@@ -246,27 +251,41 @@ fun WebViewScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Section 20: Pull-down refresh gesture
+        // Section 20: Pull-down refresh gesture - offset to not block header
+        // Also handles swipe-down to minimize video
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(120.dp)
                 .align(Alignment.TopCenter)
-                .pointerInput(isLoading) {
+                .padding(top = 56.dp)
+                .pointerInput(isLoading, isVideoPlaying, isFullscreen) {
                     detectVerticalDragGestures(
                         onVerticalDrag = { change, dragAmount ->
                             if (dragAmount > 0 && !isLoading) {
-                                pullDistance = (pullDistance + dragAmount).coerceAtMost(220f)
+                                // If video is playing (not fullscreen), track video swipe
+                                if (isVideoPlaying && !isFullscreen) {
+                                    videoSwipeDistance = (videoSwipeDistance + dragAmount).coerceAtMost(250f)
+                                } else {
+                                    pullDistance = (pullDistance + dragAmount).coerceAtMost(220f)
+                                }
                                 change.consume()
                             }
                         },
                         onDragEnd = {
-                            if (pullDistance >= pullThreshold && !isLoading) {
+                            // Check video swipe first
+                            if (isVideoPlaying && !isFullscreen && videoSwipeDistance >= videoSwipeThreshold) {
+                                onMinimizeVideo()
+                            } else if (pullDistance >= pullThreshold && !isLoading) {
                                 webView?.reload()
                             }
                             pullDistance = 0f
+                            videoSwipeDistance = 0f
                         },
-                        onDragCancel = { pullDistance = 0f }
+                        onDragCancel = {
+                            pullDistance = 0f
+                            videoSwipeDistance = 0f
+                        }
                     )
                 }
         )
@@ -296,7 +315,7 @@ fun WebViewScreen(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 12.dp, end = 12.dp)
+                    .padding(top = 56.dp, end = 12.dp)
                     .size(34.dp)
                     .clip(CircleShape)
                     .background(EclipseSurface.copy(alpha = 0.9f))
