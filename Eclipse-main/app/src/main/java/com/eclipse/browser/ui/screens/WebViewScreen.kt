@@ -103,13 +103,10 @@ fun WebViewScreen(
         onExitFullscreen()
     }
 
-    // Normal back handler - video minimize first, then WebView history, then exit
+    // Normal back handler - use WebView history, only exit when no more history
     BackHandler(enabled = !isFullscreen) {
         val wv = webView
-        // If video is playing (not fullscreen), minimize it first
-        if (isVideoPlaying && !isFullscreen) {
-            onMinimizeVideo()
-        } else if (wv?.canGoBack() == true) {
+        if (wv?.canGoBack() == true) {
             wv.goBack()
         } else {
             onBack()
@@ -310,25 +307,7 @@ fun WebViewScreen(
             )
         }
 
-        // Video minimize button (shown when video is playing but not fullscreen)
-        if (isVideoPlaying && !isFullscreen) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 56.dp, end = 12.dp)
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(EclipseSurface.copy(alpha = 0.9f))
-                    .clickable { onMinimizeVideo() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "⤵",
-                    color = accentColor,
-                    fontSize = 16.sp
-                )
-            }
-        }
+
 
         val showPullIndicator = isLoading || pullDistance > 0f
         if (showPullIndicator) {
