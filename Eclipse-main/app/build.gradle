@@ -1,6 +1,6 @@
 plugins {
     id 'com.android.application'
-    id 'kotlin-android'
+    id 'org.jetbrains.kotlin.android'
 }
 
 android {
@@ -26,10 +26,7 @@ android {
 
     buildTypes {
         release {
-            // Section 33.3 — R8 code obfuscation enabled for release
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled false
             signingConfig signingConfigs.release
         }
         debug {
@@ -63,14 +60,12 @@ android {
 }
 
 dependencies {
-    // Core
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.activity:activity-compose:1.8.2'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0'
 
-    // Compose BOM
     def composeBom = platform('androidx.compose:compose-bom:2024.01.00')
     implementation composeBom
 
@@ -82,28 +77,20 @@ dependencies {
     implementation 'androidx.compose.foundation:foundation'
     implementation 'androidx.compose.runtime:runtime'
 
-    // DataStore
     implementation 'androidx.datastore:datastore-preferences:1.0.0'
 
-    // Coil for image loading
     implementation 'io.coil-kt:coil-compose:2.5.0'
 
-    // Google Fonts for Compose
     implementation 'androidx.compose.ui:ui-text-google-fonts'
 
-    // WebView
     implementation 'androidx.webkit:webkit:1.9.0'
 
-    // Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 
-    // JSON
     implementation 'org.json:json:20230618'
 
-    // OkHttp for API calls — all backend communication
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
-    // Section 33.5 — Encrypted local storage
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 
     debugImplementation 'androidx.compose.ui:ui-tooling'
