@@ -139,6 +139,9 @@ data class EclipseUiState(
     val searchActive: Boolean = false,
     // Hide bottom nav during fullscreen landscape video
     val isInFullscreen: Boolean = false,
+    // Feature 1: Navigation history stack (for ALL screens)
+    val backStack: List<ScreenHistoryEntry> = emptyList(),
+    val forwardStack: List<ScreenHistoryEntry> = emptyList(),
     // Feature 1: WebView navigation state
     val canGoBack: Boolean = false,
     val canGoForward: Boolean = false,
@@ -149,6 +152,13 @@ data class EclipseUiState(
     val mediaPlayingTabId: Int? = null,
     // Feature 1: WebView navigation actions
     val webViewAction: WebViewAction = WebViewAction.NONE
+)
+
+// Data class for screen history entries
+data class ScreenHistoryEntry(
+    val screen: Screen,
+    val url: String? = null,
+    val searchQuery: String? = null
 )
 
 enum class WebViewAction {
@@ -324,6 +334,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        // Add current screen to history before navigating to search
+        val currentEntry = ScreenHistoryEntry(
+            screen = _uiState.value.currentScreen,
+            url = _uiState.value.webViewUrl
+        )
+
         // Section 31.6: navigate to search results screen
         _uiState.update {
             it.copy(
@@ -331,7 +347,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 currentSearchQuery = trimmed,
                 searchResults = null,
                 searchLoading = true,
-                searchActive = true
+                searchActive = true,
+                backStack = if (it.currentScreen != Screen.SEARCH_RESULTS) it.backStack + currentEntry else it.backStack,
+                forwardStack = emptyList(),
+                canGoBack = true,
+                canGoForward = false
             )
         }
 
@@ -949,41 +969,111 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     // ── NAVIGATION ──
     fun navigateTo(url: String) {
+        // Add current screen to history before navigating
+        val currentEntry = ScreenHistoryEntry(
+            screen = _uiState.value.currentScreen,
+            url = _uiState.value.webViewUrl
+        )
+
         _uiState.update {
             it.copy(
                 webViewUrl = url,
                 currentScreen = Screen.WEBVIEW,
-                searchActive = false
+                searchActive = false,
+                backStack = if (it.currentScreen != Screen.WEBVIEW) it.backStack + currentEntry else it.backStack,
+                forwardStack = emptyList(),
+                canGoBack = true,
+                canGoForward = false
             )
         }
         addToHistory(url, "")
     }
 
     fun goHome() {
+        val currentEntry = ScreenHistoryEntry(
+            screen = _uiState.value.currentScreen,
+            url = _uiState.value.webViewUrl
+        )
         _uiState.update {
             it.copy(
                 currentScreen = if (it.isIncognito) Screen.INCOGNITO else Screen.HOME,
                 webViewUrl = null,
                 searchActive = false,
-                isVideoMinimized = false
+                isVideoMinimized = false,
+                backStack = if (it.currentScreen != Screen.HOME && it.currentScreen != Screen.INCOGNITO) {
+                    it.backStack + currentEntry
+                } else it.backStack,
+                forwardStack = emptyList(),
+                canGoBack = true,
+                canGoForward = false
             )
         }
         updateClock()
     }
 
-    // Feature 1: Navigate back through WebView history or go home
+    // Feature 1: Navigate back - works across ALL screens
     fun goBack() {
-        if (_uiState.value.canGoBack) {
+        val state = _uiState.value
+        
+        // First try WebView history
+        if (state.canGoBack && state.currentScreen == Screen.WEBVIEW) {
             _uiState.update { it.copy(webViewAction = WebViewAction.GO_BACK) }
-        } else {
-            goHome()
+            return
         }
+        
+        // Then try app-level history stack
+        if (state.backStack.isNotEmpty()) {
+            val currentEntry = ScreenHistoryEntry(screen = state.currentScreen, url = state.webViewUrl)
+            val previousEntry = state.backStack.last()
+            val newBackStack = state.backStack.dropLast(1)
+            
+            _uiState.update {
+                it.copy(
+                    currentScreen = previousEntry.screen,
+                    webViewUrl = previousEntry.url,
+                    searchActive = previousEntry.screen == Screen.SEARCH_RESULTS,
+                    backStack = newBackStack,
+                    forwardStack = it.forwardStack + currentEntry,
+                    canGoBack = newBackStack.isNotEmpty(),
+                    canGoForward = true,
+                    isVideoMinimized = false
+                )
+            }
+            return
+        }
+        
+        // No more history - go home
+        goHome()
     }
 
-    // Feature 1: Navigate forward through WebView history
+    // Feature 1: Navigate forward - works across ALL screens
     fun goForward() {
-        if (_uiState.value.canGoForward) {
+        val state = _uiState.value
+        
+        // First try WebView forward
+        if (state.canGoForward && state.currentScreen == Screen.WEBVIEW) {
             _uiState.update { it.copy(webViewAction = WebViewAction.GO_FORWARD) }
+            return
+        }
+        
+        // Then try app-level forward stack
+        if (state.forwardStack.isNotEmpty()) {
+            val currentEntry = ScreenHistoryEntry(screen = state.currentScreen, url = state.webViewUrl)
+            val nextEntry = state.forwardStack.last()
+            val newForwardStack = state.forwardStack.dropLast(1)
+            
+            _uiState.update {
+                it.copy(
+                    currentScreen = nextEntry.screen,
+                    webViewUrl = nextEntry.url,
+                    searchActive = nextEntry.screen == Screen.SEARCH_RESULTS,
+                    backStack = it.backStack + currentEntry,
+                    forwardStack = newForwardStack,
+                    canGoBack = true,
+                    canGoForward = newForwardStack.isNotEmpty(),
+                    isVideoMinimized = false
+                )
+            }
         }
     }
 
@@ -992,14 +1082,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(webViewAction = WebViewAction.NONE) }
     }
 
-    // Feature 1: Update canGoBack state from WebView
+    // Feature 1: Update canGoBack state from WebView (combined with app-level history)
     fun setCanGoBack(canGoBack: Boolean) {
-        _uiState.update { it.copy(canGoBack = canGoBack) }
+        val state = _uiState.value
+        val hasAppHistory = state.backStack.isNotEmpty()
+        _uiState.update { it.copy(canGoBack = canGoBack || hasAppHistory) }
     }
 
-    // Feature 1: Update canGoForward state from WebView
+    // Feature 1: Update canGoForward state from WebView (combined with app-level history)
     fun setCanGoForward(canGoForward: Boolean) {
-        _uiState.update { it.copy(canGoForward = canGoForward) }
+        val state = _uiState.value
+        val hasAppForward = state.forwardStack.isNotEmpty()
+        _uiState.update { it.copy(canGoForward = canGoForward || hasAppForward) }
     }
 
     // Feature 2: Handle video minimized to mini player
