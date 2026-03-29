@@ -5,10 +5,13 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.VideoView
+import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import android.media.MediaPlayer
@@ -68,37 +71,40 @@ fun VideoBackground(
         }
     }
 
+    // Use VideoView instead of SurfaceView for proper aspect ratio handling
     AndroidView(
         factory = { ctx ->
-            SurfaceView(ctx).apply {
+            VideoView(ctx).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT
                 )
-                holder.addCallback(object : SurfaceHolder.Callback {
-                    override fun surfaceCreated(holder: SurfaceHolder) {
-                        try {
-                            mediaPlayer.setDisplay(holder)
-                            if (isPrepared && !mediaPlayer.isPlaying) {
-                                mediaPlayer.start()
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
+                // Use fitCenter to maintain aspect ratio (like YouTube)
+                setVideoPath(
+                    when {
+                        videoPath.startsWith("content://") -> {
+                            // For content URIs, we need to use the file we created
+                            File(
+                                context.cacheDir,
+                                "temp_video_${System.currentTimeMillis()}.mp4"
+                            ).absolutePath
                         }
+                        videoPath.startsWith("file://") -> videoPath.removePrefix("file://")
+                        else -> videoPath
                     }
-
-                    override fun surfaceChanged(
-                        holder: SurfaceHolder,
-                        format: Int,
-                        width: Int,
-                        height: Int
-                    ) {}
-
-                    override fun surfaceDestroyed(holder: SurfaceHolder) {}
-                })
+                )
+                setOnPreparedListener { mp ->
+                    mp.isLooping = true
+                    // Fit the video within the view while maintaining aspect ratio
+                    mp.start()
+                }
+                setOnErrorListener { _, _, _ ->
+                    true // Handle error gracefully
+                }
+                start()
             }
         },
-        modifier = modifier,
+        modifier = modifier.background(Color.Black),
         update = { view ->
             view.visibility = View.VISIBLE
         }

@@ -42,13 +42,13 @@ fun HomeScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
 
-        // Custom background — image or video
+        // Custom background — image or video (extends behind status bar)
         if (state.customBgType == "image" && state.customBgPath.isNotBlank()) {
             AsyncImage(
                 model = state.customBgPath,
                 contentDescription = "Custom background",
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Fit // Changed from Crop to avoid cropping
             )
         }
         if (state.customBgType == "video" && state.customBgPath.isNotBlank()) {

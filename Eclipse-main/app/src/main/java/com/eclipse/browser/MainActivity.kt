@@ -4,9 +4,11 @@ import android.os.Build
 import android.os.Debug
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -16,7 +18,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.eclipse.browser.ui.components.*
 import com.eclipse.browser.ui.screens.*
 import com.eclipse.browser.ui.sheets.MenuSheet
@@ -44,8 +50,19 @@ class MainActivity : ComponentActivity() {
             vm.applySecurityRestrictions()
         }
 
-        // Section 38: Edge-to-edge layout so fullscreen video goes behind bars
+        // Enable edge-to-edge for proper status bar handling
+        enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        // Make status bar transparent and allow content to draw behind it
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        
+        // Hide status bar icons for cleaner look (optional)
+        WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+            controller.isAppearanceLightStatusBars = !vm.uiState.value.isNight
+            controller.isAppearanceLightNavigationBars = !vm.uiState.value.isNight
+        }
 
         setContent {
             EclipseTheme {

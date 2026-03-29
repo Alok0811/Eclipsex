@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eclipse Browser | Next-Gen Mobile Browser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollToPlugin.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-card-hover: rgba(255, 255, 255, 0.06);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #6b6b7b;
+            --accent-purple: #a855f7;
+            --accent-pink: #ec4899;
+            --accent-cyan: #22d3ee;
+            --accent-blue: #6366f1;
+            --accent-orange: #f97316;
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-hover: rgba(255, 255, 255, 0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        .gradient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
+                        radial-gradient(ellipse 60% 50% at 100% 50%, rgba(168, 85, 247, 0.1), transparent),
+                        radial-gradient(ellipse 60% 50% at 0% 80%, rgba(236, 72, 153, 0.08), transparent);
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10, 10, 15, 0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn-ghost {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-card);
+            border-color: var(--border-hover);
+        }
+
+        .btn-primary {
+            padding: 0.5rem 1.25rem;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(168, 85, 247, 0.4);
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 8rem 2rem 4rem;
+            position: relative;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .hero-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .hero-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(3rem, 9vw, 7rem);
+            font-weight: 700;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            margin-bottom: 1.5rem;
+            max-width: 900px;
+        }
+
+        .hero-title .line {
+            display: block;
+        }
+
+        .hero-title .gradient-text {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin-bottom: 2.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .btn-large {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-gradient {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            color: white;
+            box-shadow: 0 4px 25px rgba(168, 85, 247, 0.4);
+        }
+
+        .btn-gradient:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 40px rgba(168, 85, 247, 0.5);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .btn-outline:hover {
+            background: var(--bg-card);
+            border-color: var(--border-hover);
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            opacity: 0;
+        }
+
+        .scroll-indicator span {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        .mouse-icon {
+            width: 20px;
+            height: 32px;
+            border: 2px solid var(--text-muted);
+            border-radius: 10px;
+            position: relative;
+        }
+
+        .mouse-icon::before {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 6px;
+            background: var(--accent-cyan);
+            border-radius: 2px;
+            animation: scrollMouse 2s infinite;
+        }
+
+        @keyframes scrollMouse {
+            0%, 100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            50% { opacity: 0.3; transform: translateX(-50%) translateY(8px); }
+        }
+
+        .section {
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-label {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+        }
+
+        .section-desc {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            background: var(--bg-card-hover);
+            border-color: var(--border-hover);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            margin-bottom: 1.25rem;
+            position: relative;
+        }
+
+        .feature-icon::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            background: inherit;
+            filter: blur(15px);
+            opacity: 0.4;
+            z-index: -1;
+        }
+
+        .feature-icon.speed { background: linear-gradient(135deg, #f97316, #fb923c); }
+        .feature-icon.privacy { background: linear-gradient(135deg, #22d3ee, #06b6d4); }
+        .feature-icon.ai { background: linear-gradient(135deg, #a855f7, #8b5cf6); }
+        .feature-icon.custom { background: linear-gradient(135deg, #ec4899, #f43f5e); }
+        .feature-icon.ext { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .feature-icon.sync { background: linear-gradient(135deg, #10b981, #34d399); }
+
+        .feature-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .showcase-section {
+            padding: 6rem 2rem;
+            background: linear-gradient(180deg, transparent, rgba(99, 102, 241, 0.03), transparent);
+        }
+
+        .showcase-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .showcase-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.4s;
+        }
+
+        .showcase-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: var(--accent-purple);
+            box-shadow: 0 20px 60px rgba(168, 85, 247, 0.2);
+        }
+
+        .showcase-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            position: relative;
+            overflow: hidden;
+        }
+
+        .showcase-image::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .showcase-content {
+            padding: 1.5rem;
+        }
+
+        .showcase-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .showcase-tag {
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .stats-section {
+            background: var(--bg-card);
+            border-top: 1px solid var(--border-subtle);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            text-align: center;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .stat-item {
+            padding: 2rem;
+        }
+
+        .stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2.5rem, 5vw, 3.5rem);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .cta-section {
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 4rem 2rem;
+            position: relative;
+        }
+
+        .cta-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.15), transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .cta-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+            max-width: 700px;
+        }
+
+        .cta-desc {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 2.5rem;
+            max-width: 500px;
+        }
+
+        .download-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 24px;
+            padding: 3rem;
+            max-width: 450px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .download-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent, var(--accent-purple), transparent, var(--accent-cyan), transparent);
+            animation: rotateGlow 6s linear infinite;
+            opacity: 0.15;
+        }
+
+        @keyframes rotateGlow {
+            100% { transform: rotate(360deg); }
+        }
+
+        .download-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .download-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.4s;
+            box-shadow: 0 4px 25px rgba(168, 85, 247, 0.4);
+            margin-top: 1.5rem;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 8px 40px rgba(168, 85, 247, 0.5);
+        }
+
+        .download-btn svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .version-text {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+        }
+
+        .footer {
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border-subtle);
+            text-align: center;
+        }
+
+        .footer-text {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink), var(--accent-cyan));
+            width: 0%;
+            z-index: 1001;
+        }
+
+        @media (max-width: 900px) {
+            .nav-links {
+                display: none;
+            }
+
+            .showcase-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .float {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="gradient-bg"></div>
+    <canvas id="webgl-canvas"></canvas>
+    <div class="progress-bar"></div>
+
+    <nav class="navbar">
+        <div class="logo">
+            <div class="logo-icon">🌑</div>
+            ECLIPSE
+        </div>
+        <ul class="nav-links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#showcase">Showcase</a></li>
+            <li><a href="#stats">Stats</a></li>
+            <li><a href="#download">Download</a></li>
+        </ul>
+        <div class="nav-buttons">
+            <button class="btn-ghost">Login</button>
+            <button class="btn-primary">Get Started</button>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-badge">
+            <span class="dot"></span>
+            Now available on Android
+        </div>
+        <h1 class="hero-title">
+            <span class="line">Browser</span>
+            <span class="line gradient-text">Reimagined</span>
+        </h1>
+        <p class="hero-subtitle">
+            Experience the next generation of mobile browsing. Lightning fast, AI-powered, and built for the future.
+        </p>
+        <div class="hero-buttons">
+            <a href="#download" class="btn-large btn-gradient">
+                Download Now
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </a>
+            <a href="#features" class="btn-large btn-outline">
+                Explore Features
+            </a>
+        </div>
+        <div class="scroll-indicator">
+            <span>Scroll to explore</span>
+            <div class="mouse-icon"></div>
+        </div>
+    </section>
+
+    <section class="section" id="features">
+        <div class="section-header">
+            <span class="section-label">Why Eclipse</span>
+            <h2 class="section-title">Built Different</h2>
+            <p class="section-desc">Every feature designed with purpose. Every detail crafted for excellence.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card reveal">
+                <div class="feature-icon speed">⚡</div>
+                <h3 class="feature-title">Blazing Fast</h3>
+                <p class="feature-text">Proprietary rendering engine delivers pages instantly. Smart caching learns your patterns to preload content before you click.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <div class="feature-icon privacy">🔒</div>
+                <h3 class="feature-title">Total Privacy</h3>
+                <p class="feature-text">Military-grade encryption, automatic tracker blocking, and incognito mode that actually works. Your data stays yours.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <div class="feature-icon ai">🤖</div>
+                <h3 class="feature-title">AI Assistant</h3>
+                <p class="feature-text">Meet your intelligent companion. Ask questions, summarize content, generate code — all while you browse.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <div class="feature-icon custom">🎨</div>
+                <h3 class="feature-title">Infinite Customization</h3>
+                <p class="feature-text">Thousands of themes, custom start pages, organize extensions. Make it truly yours.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <div class="feature-icon ext">🧩</div>
+                <h3 class="feature-title">Extensions</h3>
+                <p class="feature-text">Secure marketplace with verified add-ons. Import favorites from other browsers in one click.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <div class="feature-icon sync">🔄</div>
+                <h3 class="feature-title">Seamless Sync</h3>
+                <p class="feature-text">Your bookmarks, history, and settings everywhere. Encrypted sync keeps everything in harmony.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="showcase-section" id="showcase">
+        <div class="section-header">
+            <span class="section-label">What's Possible</span>
+            <h2 class="section-title">Create Beautiful Experiences</h2>
+            <p class="section-desc">See what's possible with Eclipse Browser's powerful features.</p>
+        </div>
+
+        <div class="showcase-grid">
+            <div class="showcase-card">
+                <div class="showcase-image" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);"></div>
+                <div class="showcase-content">
+                    <h3 class="showcase-title">Lightning Speed</h3>
+                    <span class="showcase-tag">Performance</span>
+                </div>
+            </div>
+
+            <div class="showcase-card">
+                <div class="showcase-image" style="background: linear-gradient(135deg, #22d3ee, #06b6d4);"></div>
+                <div class="showcase-content">
+                    <h3 class="showcase-title">Total Privacy</h3>
+                    <span class="showcase-tag">Security</span>
+                </div>
+            </div>
+
+            <div class="showcase-card">
+                <div class="showcase-image" style="background: linear-gradient(135deg, #ec4899, #f43f5e);"></div>
+                <div class="showcase-content">
+                    <h3 class="showcase-title">AI Power</h3>
+                    <span class="showcase-tag">Intelligence</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="stats-section" id="stats">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" data-target="3">0</div>
+                <div class="stat-label">x Faster Loading</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" data-target="50">0</div>
+                <div class="stat-label">% Less Memory</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" data-target="10">0</div>
+                <div class="stat-label">K+ Trackers Blocked</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" data-target="100">0</div>
+                <div class="stat-label">% Privacy Focused</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section" id="download">
+        <div class="cta-glow"></div>
+        <h2 class="cta-title">Ready to Transform Your Browser?</h2>
+        <p class="cta-desc">Join millions of users who've already made the switch.</p>
+        
+        <div class="download-card">
+            <div class="download-content">
+                <a href="./Eclipse-debug.apk" class="download-btn" download>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download for Android
+                </a>
+                <p class="version-text">Version 1.0.0 • Free forever</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p class="footer-text">© 2024 Eclipse Browser. Built with ❤️ for the future.</p>
+    </footer>
+
+    <script>
+        // Three.js Particle Animation
+        const canvas = document.getElementById('webgl-canvas');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        camera.position.z = 50;
+
+        // Create particles
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particleCount = 1500;
+        const posArray = new Float32Array(particleCount * 3);
+        
+        for(let i = 0; i < particleCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 150;
+        }
+        
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.15,
+            color: 0xa855f7,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particles);
+
+        // Create floating orbs
+        const orbGeometry = new THREE.SphereGeometry(2, 32, 32);
+        const orbMaterial = new THREE.MeshBasicMaterial({
+            color: 0x6366f1,
+            transparent: true,
+            opacity: 0.3
+        });
+
+        const orbs = [];
+        for(let i = 0; i < 5; i++) {
+            const orb = new THREE.Mesh(orbGeometry, orbMaterial.clone());
+            orb.position.set(
+                (Math.random() - 0.5) * 80,
+                (Math.random() - 0.5) * 80,
+                (Math.random() - 0.5) * 40 - 20
+            );
+            orb.scale.setScalar(Math.random() * 2 + 1);
+            orbs.push(orb);
+            scene.add(orb);
+        }
+
+        // Mouse interaction
+        let mouseX = 0, mouseY = 0;
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+            mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            particles.rotation.y += 0.0003;
+            particles.rotation.x += 0.0001;
+
+            orbs.forEach((orb, i) => {
+                orb.position.y += Math.sin(Date.now() * 0.001 + i) * 0.02;
+                orb.rotation.x += 0.005;
+                orb.rotation.y += 0.005;
+            });
+
+            camera.position.x += (mouseX * 5 - camera.position.x) * 0.02;
+            camera.position.y += (-mouseY * 5 - camera.position.y) * 0.02;
+            camera.lookAt(scene.position);
+
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // GSAP Animations
+        gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+
+        // Hero animations
+        gsap.to('.hero-badge', { opacity: 1, y: 0, duration: 0.8, delay: 0.2 });
+        gsap.to('.hero-title', { opacity: 1, y: 0, duration: 1, delay: 0.4, ease: "power3.out" });
+        gsap.to('.hero-subtitle', { opacity: 1, y: 0, duration: 0.8, delay: 0.7 });
+        gsap.to('.hero-buttons', { opacity: 1, y: 0, duration: 0.8, delay: 0.9 });
+        gsap.to('.scroll-indicator', { opacity: 1, duration: 1, delay: 1.5 });
+
+        // Progress bar
+        gsap.to('.progress-bar', {
+            scrollTrigger: { start: 'top top', end: 'bottom bottom', scrub: 0.3 },
+            width: '100%'
+        });
+
+        // Stats counter
+        document.querySelectorAll('.stat-value').forEach(stat => {
+            const target = parseInt(stat.dataset.target);
+            gsap.to(stat, {
+                scrollTrigger: { trigger: stat, start: 'top 80%' },
+                innerHTML: target,
+                duration: 2,
+                snap: { innerHTML: 1 },
+                onUpdate: function() {
+                    stat.innerHTML = Math.round(this.targets()[0].innerHTML);
+                }
+            });
+        });
+
+        // Reveal cards
+        gsap.utils.toArray('.reveal').forEach((el, i) => {
+            gsap.to(el, {
+                scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none reverse' },
+                opacity: 1, y: 0, duration: 0.8, delay: i * 0.1, ease: "power3.out"
+            });
+        });
+
+        // Showcase cards hover effect
+        gsap.utils.toArray('.showcase-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                gsap.to(card, { scale: 1.02, duration: 0.3 });
+            });
+            card.addEventListener('mouseleave', () => {
+                gsap.to(card, { scale: 1, duration: 0.3 });
+            });
+        });
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if(target) {
+                    gsap.to(window, { duration: 1, scrollTo: target.offsetTop, ease: "power2.inOut" });
+                }
+            });
+        });
+
+        // Parallax on scroll
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            particles.rotation.y = scrolled * 0.0001;
+        });
+    </script>
+</body>
+</html>
