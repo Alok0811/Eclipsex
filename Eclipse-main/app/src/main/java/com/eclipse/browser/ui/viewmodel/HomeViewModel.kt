@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.eclipse.browser.EclipseConfig
+import com.eclipse.browser.SupabaseDatabase
 import com.eclipse.browser.data.DEFAULT_EXTENSIONS
 import com.eclipse.browser.data.StorageManager
 import com.eclipse.browser.ui.screens.DiscoverScript
@@ -170,6 +171,9 @@ enum class Screen { HOME, WEBVIEW, INCOGNITO, AI_CHAT, SEARCH_RESULTS, EXTENSION
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     val storage = StorageManager(application)
+    
+    // Supabase cloud database
+    val supabaseDb = SupabaseDatabase(application)
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -353,6 +357,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 canGoBack = true,
                 canGoForward = false
             )
+        }
+
+        // Sync to Supabase cloud
+        viewModelScope.launch {
+            supabaseDb.addSearchHistory(trimmed)
         }
 
         performSearch(trimmed, _uiState.value.activeSearchTab, 1)
@@ -1302,6 +1311,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             if (bookmarks.any { it.url == url }) { showToast("Already bookmarked"); return@launch }
             bookmarks.add(BookmarkItem(url, title.ifBlank { url }, System.currentTimeMillis()))
             storage.save(StorageManager.BOOKMARKS, bookmarksToJson(bookmarks))
+            
+            // Sync to Supabase cloud
+            supabaseDb.addBookmark(url, title.ifBlank { url })
+            
             showToast("★ Bookmarked")
         }
     }
@@ -1323,6 +1336,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             history.add(0, HistoryItem(url, title.ifBlank { url }, System.currentTimeMillis()))
             if (history.size > 150) history.subList(150, history.size).clear()
             storage.save(StorageManager.HISTORY, historyToJson(history))
+            
+            // Sync to Supabase cloud
+            supabaseDb.addBrowserHistory(url, title.ifBlank { url })
         }
     }
 
